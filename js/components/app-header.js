@@ -12,7 +12,7 @@ export const AppHeader = {
             <!-- Currency Toggle (Overview & Stats) -->
             <div v-if="['overview', 'stats'].includes(currentTab)" @click="toggleBaseCurrency" 
                  class="flex items-center justify-center space-x-1 bg-gray-100 px-3 py-1.5 rounded-full cursor-pointer transition-colors hover:bg-gray-200">
-                <span class="text-[9px] font-bold text-gray-400">{{ baseCurrency.value }}</span>
+                <span class="text-[9px] font-bold text-gray-400">{{ baseCurrency }}</span>
                 <span class="material-symbols-rounded text-[10px] text-gray-400">sync_alt</span>
             </div>
 

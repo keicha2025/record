@@ -1,5 +1,6 @@
 import { CONFIG } from './config.js?v=1.3';
 import { API } from './api.js';
+import { GoogleSheetsService } from './services/google-sheets-service.js';
 import { AddPage } from './pages/add-page.js';
 import { EditPage } from './pages/edit-page.js';
 import { HistoryPage } from './pages/history-page.js';
@@ -14,6 +15,7 @@ import { AppHeader } from './components/app-header.js';
 import { AppFooter } from './components/app-footer.js';
 import { IconEditPage } from './pages/icon-edit-page.js';
 import { IconPicker } from './components/icon-picker.js';
+import { AppSelect } from './components/app-select.js';
 
 const { createApp, ref, onMounted, computed, provide, watch } = window.Vue;
 
@@ -31,7 +33,8 @@ createApp({
         'app-header': AppHeader,
         'app-footer': AppFooter,
         'icon-picker': IconPicker,
-        'icon-edit-page': IconEditPage
+        'icon-edit-page': IconEditPage,
+        'app-select': AppSelect
     },
     setup() {
         const getLocalISOString = () => {
@@ -68,6 +71,7 @@ createApp({
         const editForm = ref(null);
         const selectedProject = ref(null);
         const iconEditContext = ref(null);
+        const isSettingsDirty = ref(false);
 
         // --- Global Dialog System ---
         const modalState = ref({
@@ -99,14 +103,14 @@ createApp({
                     modalState.value.visible = true;
                 });
             },
-            confirm: (message, title = '確認') => {
+            confirm: (message, options = {}) => {
                 return new Promise(resolve => {
                     modalState.value.config = {
                         type: 'confirm',
-                        title,
+                        title: options.title || '確認',
                         message,
-                        confirmText: '確定',
-                        secondaryText: '取消',
+                        confirmText: options.confirmText || '確定',
+                        secondaryText: options.secondaryText || '取消',
                         showCancel: true
                     };
                     modalState.value.resolve = resolve;
@@ -414,6 +418,17 @@ createApp({
             }
         };
 
+        const handleTabChange = async (newTab) => {
+            if (isSettingsDirty.value) {
+                if (await dialog.confirm("您有未儲存的修改，確定要離開嗎？")) {
+                    isSettingsDirty.value = false;
+                    currentTab.value = newTab;
+                }
+            } else {
+                currentTab.value = newTab;
+            }
+        };
+
         const handleDelete = async (row) => {
             if (appMode.value === 'VIEWER') return;
             // NOTE: row is legacy, we need ID.
@@ -495,8 +510,8 @@ createApp({
             editForm.value = JSON.parse(JSON.stringify({
                 ...item,
                 spendDate: formattedDate,
-                amount: (item.originalCurrency === 'TWD' ? item.amountTWD : item.amountJPY),
-                currency: item.originalCurrency || 'JPY',
+                amount: item.amount !== undefined ? item.amount : (item.originalCurrency === 'TWD' ? item.amountTWD : item.amountJPY),
+                currency: item.currency || item.originalCurrency || (item.amountTWD ? 'TWD' : 'JPY'),
                 action: 'edit',
                 isSplit: hasSplit,
                 projectId: item.projectId || ''
@@ -532,18 +547,41 @@ createApp({
             clear: () => { localStorage.removeItem('guest_data'); window.location.reload(); }
         };
 
+        const handleUpdateUserData = async (data) => {
+            if (appMode.value === 'GUEST') {
+                if (data.categories) localStorage.setItem('guest_categories', JSON.stringify(data.categories));
+                if (data.paymentMethods) localStorage.setItem('guest_payments', JSON.stringify(data.paymentMethods));
+                if (data.friends) localStorage.setItem('guest_friends', JSON.stringify(data.friends));
+                await loadData();
+                return;
+            }
+            if (appMode.value !== 'ADMIN') return;
+            loading.value = true;
+            await API.updateUserData(data);
+            await loadData();
+            loading.value = false;
+        };
+
+        const handleAddFriendToList = async (n) => {
+            if (!friends.value.includes(n)) {
+                friends.value.push(n);
+                await handleUpdateUserData({ friends: friends.value });
+            }
+        };
+
         return {
-            currentTab, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, selectedProject,
+            currentTab, handleTabChange, loading, categories, friends, paymentMethods, projects, transactions, filteredTransactions, historyFilter, form, editForm, stats, systemConfig, fxRate, selectedProject, isSettingsDirty,
             appMode, syncStatus, currentUser,
             handleSubmit, handleDelete, handleEditItem,
             formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)),
             getTabIcon,
             toggleCurrency: () => form.value.currency = (form.value.currency === 'JPY' ? 'TWD' : 'JPY'),
-            handleAddFriendToList: (n) => { if (!friends.value.includes(n)) friends.value.push(n) },
+            handleAddFriendToList,
             resetForm,
             handleDrillDown: (id) => { historyFilter.value = { mode: 'all', categoryId: id, friendName: null, currency: null, keyword: '' }; currentTab.value = 'history'; },
 
             modalState, handleModalConfirm, handleModalCancel,
+            baseCurrency, toggleBaseCurrency,
 
             handleUpdateConfig: async (c) => {
                 if (appMode.value === 'GUEST') {
@@ -558,24 +596,7 @@ createApp({
                 await API.saveTransaction({ action: 'updateConfig', ...c });
                 await loadData();
             },
-            handleUpdateUserData: async (data) => {
-                if (appMode.value === 'GUEST') {
-                    // Logic for guest array update?
-                    // Guest currently rely on hardcoded arrays in loadData fallback or we need to save arrays to localStorage
-                    // Let's implement Guest localStorage support for categories/payments later or now.
-                    // For now, let's implement for ADMIN mostly as per request context (default DB).
-                    // But to be consistent:
-                    if (data.categories) localStorage.setItem('guest_categories', JSON.stringify(data.categories));
-                    if (data.paymentMethods) localStorage.setItem('guest_payments', JSON.stringify(data.paymentMethods));
-                    await loadData();
-                    return;
-                }
-                if (appMode.value !== 'ADMIN') return;
-                loading.value = true;
-                await API.updateUserData(data);
-                await loadData();
-                loading.value = false;
-            },
+            handleUpdateUserData,
             handleViewFriend: (n) => { historyFilter.value = { mode: 'all', categoryId: null, friendName: n, currency: null, keyword: '' }; currentTab.value = 'history'; },
             handleViewProject: (p) => { selectedProject.value = p; currentTab.value = 'project-detail'; },
             handleViewHistory,
@@ -586,26 +607,42 @@ createApp({
                 iconEditContext.value = ctx;
                 currentTab.value = 'icon-edit';
             },
+            handleClearAccountData: async () => {
+                loading.value = true;
+                try {
+                    await API.clearAccountData();
+                    await API.logout();
+                    // Force full reload to clean all states
+                    window.location.href = window.location.origin + window.location.pathname;
+                } catch (e) {
+                    console.error(e);
+                    dialog.alert("刪除失敗，請稍後再試");
+                } finally {
+                    loading.value = false;
+                }
+            },
             handleSelectIcon: ({ icon, name }) => {
                 if (!iconEditContext.value) return;
-                const { type, index } = iconEditContext.value;
+                const { type, id } = iconEditContext.value;
+
+                // Update root state
                 if (type === 'category') {
-                    categories.value[index].icon = icon;
-                    categories.value[index].name = name;
+                    const cat = categories.value.find(c => c.id === id);
+                    if (cat) {
+                        cat.icon = icon;
+                        cat.name = name;
+                    }
                 } else if (type === 'payment') {
-                    paymentMethods.value[index].icon = icon;
-                    paymentMethods.value[index].name = name;
+                    const pm = paymentMethods.value.find(p => p.id === id);
+                    if (pm) {
+                        pm.icon = icon;
+                        pm.name = name;
+                    }
                 }
 
-                // Trigger save
-                const updateData = {};
-                if (type === 'category') updateData.categories = categories.value;
-                else updateData.paymentMethods = paymentMethods.value;
-
-                API.updateUserData(updateData).then(() => loadData(true));
-
                 currentTab.value = 'settings';
-                iconEditContext.value = null;
+                // Trigger a refresh of settings-page if it's watching id? 
+                // Actually, settings-page will react if it uses these props.
             },
 
             // NEW: Auth Methods
@@ -665,5 +702,32 @@ createApp({
                 }
             }
         };
+
+        const autoBackupIfNeeded = async () => {
+            if (currentUser.value?.uid && systemConfig.value.auto_backup) {
+                const today = new Date().toISOString().slice(0, 10);
+                const lastBackup = localStorage.getItem('last_backup_date');
+                if (lastBackup === today) return;
+
+                const currentHour = new Date().getHours();
+                if (currentHour < 23 && lastBackup) return;
+
+                try {
+                    const token = API.getGoogleToken();
+                    if (!token) return;
+                    await GoogleSheetsService.backupTransactions(transactions.value, categories.value, token);
+                    localStorage.setItem('last_backup_date', today);
+                    console.log("Auto-backup completed.");
+                } catch (e) {
+                    console.error("Auto-backup failed", e);
+                }
+            }
+        };
+
+        onMounted(() => {
+            setTimeout(autoBackupIfNeeded, 5000);
+        });
+
+        return methods;
     }
 }).mount('#app');

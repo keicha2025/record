@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日日記 | 資料遷移工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-8">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">日日記 (Nichi-Nichi Log) 資料遷移工具</h1>
+
+        <div class="space-y-6">
+            <!-- 1. 說明區塊 -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 rounded text-sm text-blue-700">
+                <p class="font-bold mb-2">使用說明：</p>
+                <ul class="list-disc list-inside space-y-1">
+                    <li>請將舊版 JSON 資料完整貼入下方文字框。</li>
+                    <li>資料格式應包含 <code>Transactions</code> 與 <code>Projects</code> 兩個主要物件。</li>
+                    <li>點擊「開始遷移」後，系統將自動解析並寫入您的 Firebase 帳戶。</li>
+                    <li>請確保您已登入 Google 帳號 (工具會自動檢查)。</li>
+                </ul>
+            </div>
+
+            <!-- 2. 輸入區塊 -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">舊版資料 JSON</label>
+                <textarea id="jsonInput"
+                    class="w-full h-64 p-4 border border-gray-300 rounded-xl font-mono text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    placeholder='Paste your JSON here (e.g., {"Transactions": {...}, "Projects": {...}})'></textarea>
+            </div>
+
+            <!-- 3. 控制區塊 -->
+            <div class="flex items-center justify-between">
+                <div id="authStatus" class="text-sm text-gray-500 flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-gray-300"></span>
+                    <span>檢查登入狀態...</span>
+                </div>
+                <div class="space-x-3">
+                    <button id="loginBtn"
+                        class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 hidden">登入
+                        Google</button>
+                    <button id="migrateBtn"
+                        class="px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                        開始遷移
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. 輸出區塊 -->
+            <div class="bg-gray-900 rounded-xl p-4 font-mono text-xs text-green-400 h-64 overflow-y-auto"
+                id="consoleOutput">
+                <div>> Ready.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.prod.min.js"></script>
+    <script type="module" src="./js/migration-tool.js"></script>
+</body>
+
+</html>

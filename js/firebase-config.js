@@ -57,6 +57,7 @@ export {
     signInWithPopup,
     signOut,
     onAuthStateChanged,
+    GoogleAuthProvider,
     collection,
     doc,
     setDoc,

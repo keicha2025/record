@@ -11,9 +11,9 @@ export const IconEditPage = {
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 overflow-y-auto no-scrollbar pt-6">
+            <div class="flex-1 flex flex-col pt-6 min-h-0">
                 <!-- Current Selection & Name Edit -->
-                <div v-if="context" class="mb-8 px-2 space-y-4">
+                <div v-if="context" class="mb-4 px-2 shrink-0">
                     <div class="flex items-center space-x-4 bg-gray-50 p-4 rounded-[2rem] border border-gray-100/50">
                         <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#4A4A4A] shadow-sm">
                             <span class="material-symbols-rounded text-2xl">{{ selectedIcon || 'help' }}</span>
@@ -25,16 +25,18 @@ export const IconEditPage = {
                     </div>
                 </div>
 
-                <!-- Icon Groups -->
-                <div v-for="(group, name) in iconGroups" :key="name" class="mb-8 last:mb-0 px-1">
-                    <h4 class="text-[9px] text-gray-300 font-medium mb-4 uppercase tracking-[0.2em] px-1">{{ name }}</h4>
-                    <div class="grid grid-cols-4 gap-3">
-                        <button v-for="icon in group" :key="icon" 
-                            @click="selectIcon(icon)"
-                            :class="selectedIcon === icon ? 'bg-[#4A4A4A] text-white shadow-lg scale-105' : 'bg-gray-50 text-gray-400'"
-                            class="aspect-square rounded-2xl flex items-center justify-center hover:bg-[#4A4A4A] hover:text-white active:scale-95 transition-all">
-                            <span class="material-symbols-rounded text-xl">{{ icon }}</span>
-                        </button>
+                <!-- Icon Groups Scrollable Area -->
+                <div class="flex-1 overflow-y-auto subtle-scrollbar overscroll-contain px-1 max-h-[220px]">
+                    <div v-for="(group, name) in iconGroups" :key="name" class="mb-8 last:mb-0">
+                        <h4 class="text-[9px] text-gray-300 font-medium mb-4 uppercase tracking-[0.2em] px-1">{{ name }}</h4>
+                        <div class="grid grid-cols-4 gap-3">
+                            <button v-for="icon in group" :key="icon" 
+                                @click="selectIcon(icon)"
+                                :class="selectedIcon === icon ? 'bg-[#4A4A4A] text-white shadow-lg scale-105' : 'bg-gray-50 text-gray-400'"
+                                class="aspect-square rounded-2xl flex items-center justify-center hover:bg-[#4A4A4A] hover:text-white active:scale-95 transition-all">
+                                <span class="material-symbols-rounded text-xl">{{ icon }}</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -42,7 +44,7 @@ export const IconEditPage = {
             <!-- Bottom Action -->
             <div class="pt-6 shrink-0">
                 <button @click="confirm" class="w-full bg-[#4A4A4A] text-white py-5 rounded-2xl text-[10px] font-medium tracking-[0.4em] uppercase shadow-lg active:scale-95 transition-all">
-                    確認變更
+                    儲存
                 </button>
             </div>
         </div>

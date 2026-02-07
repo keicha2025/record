@@ -52,8 +52,10 @@ export const HistoryPage = {
     `,
     props: ['transactions', 'categories', 'paymentMethods', 'projects', 'fxRate'],
     setup() {
-        const baseCurrency = window.Vue.inject('baseCurrency');
-        return { baseCurrency };
+        const { inject, computed } = window.Vue;
+        const baseCurrency = inject('baseCurrency');
+        const getCurrencySymbol = computed(() => baseCurrency.value === 'JPY' ? '¥' : '$');
+        return { baseCurrency, getCurrencySymbol };
     },
     data() {
         return {
@@ -64,28 +66,20 @@ export const HistoryPage = {
         groupedTransactions() {
             const groups = {};
             this.transactions.forEach(t => {
-                const date = t.spendDate || ''; // YYYY-MM-DDTHH:mm
-                const monthKey = date.slice(0, 7); // YYYY-MM
+                const date = t.spendDate || '';
+                const monthKey = date.slice(0, 7);
                 if (!groups[monthKey]) groups[monthKey] = [];
                 groups[monthKey].push(t);
             });
-            // Sort keys desc (Latest month first)
             return Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(key => ({
                 month: key,
                 items: groups[key].sort((a, b) => b.spendDate.localeCompare(a.spendDate))
             }));
-        },
-        getCurrencySymbol() { return this.baseCurrency.value === 'JPY' ? '¥' : '$'; }
+        }
     },
     watch: {
         localFilter: {
             handler(newVal) {
-                // We need to update parent filter state. 
-                // Since parent passes 'filteredTransactions', filtering logic is actually in parent!
-                // Wait, if I filter in parent, I should emit filter changes.
-                // Currently parent computed 'filteredTransactions' uses 'historyFilter' ref.
-                // So I need to modify that ref.
-                // Best way: emit 'update-filter'
                 this.$emit('update-filter', newVal);
             },
             deep: true
@@ -105,16 +99,11 @@ export const HistoryPage = {
         },
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
         getSign(type) { return type === '支出' ? '-' : '+'; },
-        // getCurrencySymbol removed as it's now computed and global
         getSignClass(type) { return type === '支出' ? 'text-gray-600' : 'text-gray-400'; },
         formatMonth(ym) {
             if (!ym) return '未知日期';
-            // ym is YYYY-MM
             const parts = ym.split('-');
-            if (parts.length >= 2) {
-                return `${parts[0]}年 ${parts[1]}月`;
-            }
-            return ym;
+            return parts[0] + '年' + parts[1] + '月';
         },
         getConvertedDisplayAmount(item) {
             let val = 0;
@@ -133,10 +122,10 @@ export const HistoryPage = {
         },
         convertValue(val, fromCurr) {
             const rate = Number(this.fxRate || 0.22);
-            const target = this.baseCurrency.value;
+            const target = this.baseCurrency;
             if (target === fromCurr) return val;
-            if (target === 'JPY') return val / rate; // from TWD
-            return val * rate; // from JPY to TWD
+            if (target === 'JPY') return val / rate;
+            return val * rate;
         }
     }
 };

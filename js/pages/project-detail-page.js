@@ -91,8 +91,10 @@ export const ProjectDetailPage = {
     props: ['project', 'transactions', 'fxRate'],
     inject: ['dialog'],
     setup() {
-        const baseCurrency = window.Vue.inject('baseCurrency');
-        return { baseCurrency };
+        const { inject, computed } = window.Vue;
+        const baseCurrency = inject('baseCurrency');
+        const getCurrencySymbol = computed(() => baseCurrency.value === 'JPY' ? '¥' : '$');
+        return { baseCurrency, getCurrencySymbol };
     },
     data() {
         return {
@@ -108,7 +110,7 @@ export const ProjectDetailPage = {
             // Filter transactions for this project
             const txs = this.transactions.filter(t => t.projectId === this.project.id && t.type === '支出');
             const rate = Number(this.fxRate || 0.22);
-            const targetCurr = this.baseCurrency.value;
+            const targetCurr = this.baseCurrency;
 
             let total = 0;
             txs.forEach(t => {
@@ -132,8 +134,7 @@ export const ProjectDetailPage = {
                 total: total,
                 daily: diffDays > 0 ? total / diffDays : 0
             };
-        },
-        getCurrencySymbol() { return this.baseCurrency.value === 'JPY' ? '¥' : '$'; }
+        }
     },
     watch: {
         project: {

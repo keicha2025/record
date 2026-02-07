@@ -7,7 +7,7 @@ export const OverviewPage = {
 
             <div class="flex justify-between items-center px-2">
                 <div class="flex flex-col">
-                    <p class="text-[10px] text-gray-400 uppercase tracking-widest">{{ selectedDateLabel }} 支出 ({{ baseCurrency.value }})</p>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-widest">{{ selectedDateLabel }} 支出 ({{ baseCurrency }})</p>
                     <h2 class="text-3xl font-light text-gray-700 mt-1">{{ getCurrencySymbol }} {{ formatNumber(displayAmount) }}</h2>
                 </div>
                 <button @click="isMyShareOnly = !isMyShareOnly" class="text-[9px] px-3 py-1.5 rounded-full bg-gray-50 text-gray-400 border border-gray-100 active:bg-gray-200 transition-all uppercase tracking-widest">
@@ -22,27 +22,29 @@ export const OverviewPage = {
         <!-- 2. 月度與總統計 -->
         <div class="grid grid-cols-2 gap-3">
             <div class="bg-white p-5 rounded-[2rem] muji-shadow border border-gray-50 flex flex-col justify-center space-y-1">
-                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">本月支出</span>
-                <span class="text-lg font-light text-gray-700">{{ getCurrencySymbol }} {{ formatNumber(monthlyTotalFormatted) }}</span>
+                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">本月日幣支出</span>
+                <span class="text-lg font-light text-gray-700">¥ {{ formatNumber(monthlyJPYTotal) }}</span>
             </div>
             <div class="bg-white p-5 rounded-[2rem] muji-shadow border border-gray-50 flex flex-col justify-center space-y-1">
-                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">一次性支出</span>
-                <span class="text-lg font-light text-gray-700">{{ getCurrencySymbol }} {{ formatNumber(oneTimeTotalFormatted) }}</span>
+                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">本月台幣支出</span>
+                <span class="text-lg font-light text-gray-700">$ {{ formatNumber(monthlyTWDTotal) }}</span>
             </div>
             <div class="bg-white p-5 rounded-[2rem] muji-shadow border border-gray-50 flex flex-col justify-center space-y-1">
-                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">生活總支出</span>
+                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">總支出 (全期間)</span>
                 <span class="text-lg font-light text-gray-700">{{ getCurrencySymbol }} {{ formatNumber(totalOutflowCombined) }}</span>
+                <span class="text-[8px] text-gray-300 font-bold">{{ baseCurrency }}</span>
             </div>
              <div class="bg-white p-5 rounded-[2rem] muji-shadow border border-gray-50 flex flex-col justify-center space-y-1">
-                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">總收入</span>
+                <span class="text-[9px] text-gray-400 font-medium uppercase tracking-widest">總收入 (全期間)</span>
                 <span class="text-lg font-light text-gray-700">{{ getCurrencySymbol }} {{ formatNumber(totalIncome) }}</span>
+                <span class="text-[8px] text-gray-300 font-bold">{{ baseCurrency }}</span>
             </div>
         </div>
 
         <!-- 4. 淨欠款狀態 -->
         <div class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 flex justify-between items-center active:scale-[0.98] transition-all" @click="$emit('go-to-history', { mode: 'debt' })">
                 <div>
-                    <p class="text-[10px] text-gray-400 font-medium uppercase tracking-widest">Net Debt Status ({{ baseCurrency.value }})</p>
+                    <p class="text-[10px] text-gray-400 font-medium uppercase tracking-widest">債務資料 ({{ baseCurrency }})</p>
                     <p class="text-xl font-light mt-1" :class="debtDisplayValue >= 0 ? 'text-gray-600' : 'text-red-300'">
                         {{ getCurrencySymbol }} {{ formatNumber(Math.abs(debtDisplayValue)) }}
                         <span class="text-xs ml-1">{{ debtDisplayValue >= 0 ? ' (Credit)' : ' (Debt)' }}</span>
@@ -54,8 +56,10 @@ export const OverviewPage = {
     `,
     props: ['transactions', 'stats', 'fxRate'],
     setup() {
-        const baseCurrency = window.Vue.inject('baseCurrency');
-        return { baseCurrency };
+        const { inject, computed } = window.Vue;
+        const baseCurrency = inject('baseCurrency');
+        const getCurrencySymbol = computed(() => baseCurrency.value === 'JPY' ? '¥' : '$');
+        return { baseCurrency, getCurrencySymbol };
     },
     data() {
         return { isMyShareOnly: false, selectedDateStr: '', chartInstance: null };
@@ -63,12 +67,9 @@ export const OverviewPage = {
     computed: {
         todayStr() {
             const now = new Date();
-            // Use hyphens to match spenDate format (YYYY-MM-DD)
             return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
         },
         selectedDateLabel() { return this.selectedDateStr === this.todayStr ? '本日' : this.selectedDateStr.substring(5); },
-        getCurrencySymbol() { return this.baseCurrency.value === 'JPY' ? '¥' : '$'; },
-
         displayAmount() {
             const targetDate = this.selectedDateStr || this.todayStr;
             return this.transactions
@@ -76,27 +77,31 @@ export const OverviewPage = {
                 .reduce((acc, t) => acc + this.getNormalizedAmount(t), 0);
         },
 
-        // Dynamic Monthly Stats
-        monthlyTotalFormatted() {
+        // Dynamic Monthly Stats (Split by original currency)
+        monthlyJPYTotal() {
             const ym = this.todayStr.substring(0, 7);
             return this.transactions
-                .filter(t => t.spendDate.startsWith(ym) && t.type === '支出' && !t.isOneTime)
-                .reduce((acc, t) => acc + this.getNormalizedAmount(t), 0);
+                .filter(t => t.spendDate.startsWith(ym) && t.type === '支出' && (t.currency === 'JPY' || !t.currency))
+                .reduce((acc, t) => {
+                    const val = this.isMyShareOnly || t.payer !== '我' ? Number(t.personalShare || 0) : Number(t.amount || 0);
+                    return acc + val;
+                }, 0);
         },
-        oneTimeTotalFormatted() {
-            const ym = this.todayStr.substring(0, 7); // Show Monthly One Time? Or All time? Let's show Monthly to match UI
-            // Actually user might want All Time One Time. 
-            // Let's stick to "This Month One Time" for consistency with "This Month Expense".
+        monthlyTWDTotal() {
+            const ym = this.todayStr.substring(0, 7);
             return this.transactions
-                .filter(t => t.spendDate.startsWith(ym) && t.type === '支出' && t.isOneTime)
-                .reduce((acc, t) => acc + this.getNormalizedAmount(t), 0);
+                .filter(t => t.spendDate.startsWith(ym) && t.type === '支出' && t.currency === 'TWD')
+                .reduce((acc, t) => {
+                    const val = this.isMyShareOnly || t.payer !== '我' ? Number(t.personalShare || 0) : Number(t.amount || 0);
+                    return acc + val;
+                }, 0);
         },
 
         totalOutflowCombined() { // Life Total (All Time)
             // Use pre-calc stats from App.js if available, but need conversion.
             // Or recalc locally for instant reactivity. Local is safer for currency toggle.
             return this.transactions
-                .filter(t => t.type === '支出' && !t.isOneTime)
+                .filter(t => t.type === '支出')
                 .reduce((acc, t) => acc + this.getNormalizedAmount(t), 0);
         },
         totalIncome() {
@@ -126,7 +131,7 @@ export const OverviewPage = {
 
                     // Convert to Base
                     const toBase = (v, c) => {
-                        if (this.baseCurrency.value === 'JPY') return (c === 'TWD') ? v / rate : v;
+                        if (this.baseCurrency === 'JPY') return (c === 'TWD') ? v / rate : v;
                         else return (c === 'JPY') ? v * rate : v;
                     };
 
@@ -165,7 +170,7 @@ export const OverviewPage = {
             }
 
             // 2. Convert to BASE currency
-            if (this.baseCurrency.value === 'JPY') {
+            if (this.baseCurrency === 'JPY') {
                 if (currency === 'TWD') return val / rate;
                 return val;
             } else {
@@ -205,7 +210,7 @@ export const OverviewPage = {
     watch: {
         isMyShareOnly() { this.renderChart(); },
         selectedDateStr() { this.renderChart(); },
-        'baseCurrency.value'() { this.renderChart(); },
+        baseCurrency() { this.renderChart(); },
         transactions: { handler() { this.renderChart(); }, deep: true }
     }
 };

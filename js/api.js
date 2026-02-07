@@ -1,5 +1,5 @@
 import {
-    db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged,
+    db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider,
     collection, doc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, query, orderBy, where, getDoc
 } from './firebase-config.js';
 
@@ -57,6 +57,38 @@ export const API = {
 
     onAuthStateChanged(callback) {
         return onAuthStateChanged(auth, callback);
+    },
+
+    async requestIncrementalScope() {
+        try {
+            const provider = new GoogleAuthProvider();
+            provider.addScope('https://www.googleapis.com/auth/spreadsheets');
+            provider.addScope('https://www.googleapis.com/auth/drive.file');
+
+            // Re-authenticate with extra scope
+            const result = await signInWithPopup(auth, provider);
+            const credential = GoogleAuthProvider.credentialFromResult(result);
+            const token = credential.accessToken;
+
+            if (token) {
+                sessionStorage.setItem('google_access_token_v4', token);
+                sessionStorage.setItem('google_token_expiry', Date.now() + 3500 * 1000); // Usually 1 hour
+                return token;
+            }
+            return null;
+        } catch (error) {
+            console.error("Scope Request Failed", error);
+            throw error;
+        }
+    },
+
+    getGoogleToken() {
+        const token = sessionStorage.getItem('google_access_token_v4');
+        const expiry = sessionStorage.getItem('google_token_expiry');
+        if (token && expiry && Date.now() < parseInt(expiry)) {
+            return token;
+        }
+        return null;
     },
 
     // Data Access
@@ -150,7 +182,8 @@ export const API = {
         if (payload.action === 'updateConfig') {
             await updateDoc(userRef, {
                 'config.user_name': payload.user_name,
-                'config.fx_rate': payload.fx_rate
+                'config.fx_rate': payload.fx_rate,
+                'config.auto_backup': payload.auto_backup ?? false
             });
             return true;
         }
@@ -165,7 +198,16 @@ export const API = {
                 // Edit
                 const idx = projects.findIndex(p => p.id === payload.id);
                 if (idx !== -1) {
-                    projects[idx] = { ...projects[idx], ...payload, action: undefined };
+                    // Sanitize payload to remove 'action' and undefined values
+                    const { action, ...cleanPayload } = payload;
+                    // Merge existing project with clean payload
+                    // Filter out undefined from result to be safe
+                    const merged = { ...projects[idx], ...cleanPayload };
+
+                    // Firestore rejects undefined, so we must ensure no field is undefined
+                    Object.keys(merged).forEach(key => merged[key] === undefined && delete merged[key]);
+
+                    projects[idx] = merged;
                 }
             } else {
                 // Create
@@ -223,6 +265,7 @@ export const API = {
         const updates = {};
         if (data.categories) updates.categories = data.categories;
         if (data.paymentMethods) updates.paymentMethods = data.paymentMethods;
+        if (data.friends) updates.friends = data.friends;
 
         await updateDoc(userRef, updates);
         return true;
@@ -286,6 +329,29 @@ export const API = {
 
         } catch (error) {
             console.error("Fetch Shared Data Error", error);
+            throw error;
+        }
+    },
+
+    async clearAccountData() {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Not logged in");
+
+        const uid = user.uid;
+        const userRef = doc(db, 'users', uid);
+        const txRef = collection(db, 'users', uid, 'transactions');
+
+        try {
+            // 1. Delete all transactions
+            const txSnapshot = await getDocs(txRef);
+            const deletePromises = txSnapshot.docs.map(doc => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+
+            // 2. Delete main user doc
+            await deleteDoc(userRef);
+            return true;
+        } catch (error) {
+            console.error("Clear Account Data Error", error);
             throw error;
         }
     }

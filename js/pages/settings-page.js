@@ -1,5 +1,6 @@
 import { CONFIG } from '../config.js';
 import { API } from '../api.js';
+import { GoogleSheetsService } from '../services/google-sheets-service.js';
 // IconPicker removed as it's now a standalone page IconEditPage
 
 export const SettingsPage = {
@@ -13,13 +14,13 @@ export const SettingsPage = {
                 <!-- 1. 使用者名稱 -->
                 <div class="flex items-center justify-between px-2">
                     <span class="text-xs text-gray-500">使用者名稱</span>
-                    <input type="text" v-model="localConfig.user_name" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32 placeholder-gray-300">
+                    <input type="text" v-model="localConfig.user_name" @change="debouncedUpdate" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32 placeholder-gray-300">
                 </div>
 
                 <!-- 2. 當前匯率 -->
                 <div class="flex items-center justify-between px-2">
                     <span class="text-xs text-gray-500">當前匯率 (1 JPY = ? TWD)</span>
-                    <input type="number" v-model="localConfig.fx_rate" step="0.001" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32">
+                    <input type="number" v-model="localConfig.fx_rate" step="0.001" @change="debouncedUpdate" class="text-right text-xs bg-gray-50 px-3 py-2 rounded-xl outline-none w-32">
                 </div>
 
                 <!-- 3. 帶入預設資料 (Guest Only) -->
@@ -46,79 +47,137 @@ export const SettingsPage = {
         </div>
 
         <!-- NEW: 類別管理 -->
+        <!-- 支出類別管理 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
-                <span>類別管理</span>
+                <span>支出類別</span>
                 <div class="flex items-center space-x-3">
-                    <button v-if="isCategoryModeEdit" @click="addCategory" class="text-gray-400 hover:text-gray-600">
-                        <span class="material-symbols-rounded text-lg">add</span>
-                    </button>
-                    <button @click="isCategoryModeEdit = !isCategoryModeEdit" :class="isCategoryModeEdit ? 'text-gray-800' : 'text-gray-400'" class="hover:text-gray-600 transition-colors">
-                        <span class="material-symbols-rounded text-lg">{{ isCategoryModeEdit ? 'check_circle' : 'edit' }}</span>
+                    <template v-if="isCategoryModeEdit">
+                        <button @click="addCategory('支出')" class="text-gray-400 hover:text-gray-600">
+                            <span class="material-symbols-rounded text-lg">add</span>
+                        </button>
+                        <button @click="cancelCategoryEdit" class="text-gray-300 hover:text-gray-500">
+                            <span class="material-symbols-rounded text-lg">close</span>
+                        </button>
+                        <button @click="saveCategoryEdit" class="text-gray-300 hover:text-slate-600 transition-colors">
+                            <span class="material-symbols-rounded text-lg">check_circle</span>
+                        </button>
+                    </template>
+                    <button v-else @click="toggleCategoryEdit" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-symbols-rounded text-lg">edit</span>
                     </button>
                 </div>
             </h3>
-            <div class="space-y-2">
-                <!-- 編輯模式 -->
+            <div class="space-y-3">
                 <template v-if="isCategoryModeEdit">
-                    <div v-for="(cat, idx) in sortedCategories" :key="'edit-cat-'+cat.id" class="flex items-center space-x-2 bg-gray-50 p-2 rounded-xl">
-                        <!-- Reorder -->
-                        <div class="flex flex-col space-y-0.5">
-                            <button @click="moveItem('categories', idx, -1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===0">▲</button>
-                            <button @click="moveItem('categories', idx, 1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===sortedCategories.length-1">▼</button>
+                    <div v-for="(cat, idx) in expenseCategories" :key="'edit-cat-exp-'+cat.id" class="flex items-center space-x-4 bg-gray-50 p-2 rounded-xl">
+                        <div class="flex flex-col space-y-0.5 px-1">
+                            <button @click="moveItem('categories', cat.id, -1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===0">▲</button>
+                            <button @click="moveItem('categories', cat.id, 1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===expenseCategories.length-1">▼</button>
                         </div>
-                        <!-- Icon -->
-                        <button @click="openIconPicker('category', idx)" class="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-gray-500 shadow-sm border border-gray-100">
-                             <span class="material-symbols-rounded text-lg">{{ cat.icon }}</span>
+                        <button @click="openIconPicker('category', cat.id)" class="w-10 h-10 aspect-square bg-white rounded-xl flex items-center justify-center text-gray-400 shadow-sm border border-gray-100 flex-shrink-0">
+                             <span class="material-symbols-rounded text-xl">{{ cat.icon }}</span>
                         </button>
-                        <!-- Name input -->
-                        <input type="text" v-model="cat.name" @change="debouncedUpdate" class="bg-transparent text-xs font-medium text-gray-700 w-full outline-none">
-                        <!-- Delete -->
-                        <button @click="deleteItem('categories', idx)" class="text-gray-300 hover:text-red-400 px-2">
+                        <input type="text" v-model="cat.name" class="bg-transparent text-xs font-medium text-gray-700 w-full outline-none">
+                        <button @click="deleteItem('categories', cat.id)" class="text-gray-300 hover:text-slate-600 px-2 transition-colors">
                             <span class="material-symbols-rounded text-sm">remove_circle</span>
                         </button>
                     </div>
                 </template>
-                <!-- 預覽模式 -->
                 <template v-else>
                     <div class="grid grid-cols-5 gap-2 px-2">
-                        <div v-for="cat in sortedCategories" :key="'view-cat-'+cat.id" class="flex flex-col items-center p-2 rounded-xl bg-gray-50">
+                        <div v-for="cat in expenseCategories" :key="'view-cat-exp-'+cat.id" class="flex flex-col items-center p-2 rounded-xl bg-gray-50">
                              <span class="material-symbols-rounded text-lg text-gray-400 mb-1">{{ cat.icon }}</span>
                              <span class="text-[9px] text-gray-500 truncate w-full text-center">{{ cat.name }}</span>
                         </div>
                     </div>
                 </template>
             </div>
-             <p v-if="isCategoryModeEdit" class="text-[9px] text-gray-300 text-center pt-2">可編輯名稱、圖示與排序</p>
         </div>
 
-        <!-- NEW: 支付方式管理 -->
+        <!-- 收入類別管理 -->
+        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
+            <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
+                <span>收入類別</span>
+                <div class="flex items-center space-x-3">
+                    <template v-if="isCategoryModeEdit">
+                        <button @click="addCategory('收入')" class="text-gray-400 hover:text-gray-600">
+                            <span class="material-symbols-rounded text-lg">add</span>
+                        </button>
+                        <button @click="cancelCategoryEdit" class="text-gray-300 hover:text-gray-500">
+                            <span class="material-symbols-rounded text-lg">close</span>
+                        </button>
+                        <button @click="saveCategoryEdit" class="text-gray-300 hover:text-slate-600 transition-colors">
+                            <span class="material-symbols-rounded text-lg">check_circle</span>
+                        </button>
+                    </template>
+                    <button v-else @click="toggleCategoryEdit" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-symbols-rounded text-lg">edit</span>
+                    </button>
+                </div>
+            </h3>
+            <div class="space-y-3">
+                <template v-if="isCategoryModeEdit">
+                    <div v-for="(cat, idx) in incomeCategories" :key="'edit-cat-inc-'+cat.id" class="flex items-center space-x-4 bg-gray-50 p-2 rounded-xl">
+                        <div class="flex flex-col space-y-0.5 px-1">
+                            <button @click="moveItem('categories', cat.id, -1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===0">▲</button>
+                            <button @click="moveItem('categories', cat.id, 1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===incomeCategories.length-1">▼</button>
+                        </div>
+                        <button @click="openIconPicker('category', cat.id)" class="w-10 h-10 aspect-square bg-white rounded-xl flex items-center justify-center text-gray-400 shadow-sm border border-gray-100 flex-shrink-0">
+                             <span class="material-symbols-rounded text-xl">{{ cat.icon }}</span>
+                        </button>
+                        <input type="text" v-model="cat.name" class="bg-transparent text-xs font-medium text-gray-700 w-full outline-none">
+                        <button @click="deleteItem('categories', cat.id)" class="text-gray-300 hover:text-slate-600 px-2 transition-colors">
+                            <span class="material-symbols-rounded text-sm">remove_circle</span>
+                        </button>
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="grid grid-cols-5 gap-2 px-2">
+                        <div v-for="cat in incomeCategories" :key="'view-cat-inc-'+cat.id" class="flex flex-col items-center p-2 rounded-xl bg-gray-50">
+                             <span class="material-symbols-rounded text-lg text-gray-400 mb-1">{{ cat.icon }}</span>
+                             <span class="text-[9px] text-gray-500 truncate w-full text-center">{{ cat.name }}</span>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 支付方式管理 -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
              <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2 flex justify-between items-center">
                 <span>支付方式管理</span>
                 <div class="flex items-center space-x-3">
-                    <button v-if="isPaymentModeEdit" @click="addPaymentMethod" class="text-gray-400 hover:text-gray-600">
-                        <span class="material-symbols-rounded text-lg">add</span>
-                    </button>
-                    <button @click="isPaymentModeEdit = !isPaymentModeEdit" :class="isPaymentModeEdit ? 'text-gray-800' : 'text-gray-400'" class="hover:text-gray-600 transition-colors">
-                        <span class="material-symbols-rounded text-lg">{{ isPaymentModeEdit ? 'check_circle' : 'edit' }}</span>
+                    <template v-if="isPaymentModeEdit">
+                        <button @click="addPaymentMethod" class="text-gray-400 hover:text-gray-600">
+                            <span class="material-symbols-rounded text-lg">add</span>
+                        </button>
+                        <button @click="cancelPaymentEdit" class="text-gray-300 hover:text-gray-500">
+                            <span class="material-symbols-rounded text-lg">close</span>
+                        </button>
+                        <button @click="savePaymentEdit" class="text-gray-300 hover:text-slate-600 transition-colors">
+                            <span class="material-symbols-rounded text-lg">check_circle</span>
+                        </button>
+                    </template>
+                    <button v-else @click="togglePaymentEdit" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <span class="material-symbols-rounded text-lg">edit</span>
                     </button>
                 </div>
             </h3>
-             <div class="space-y-2">
+             <div class="space-y-3">
                 <!-- 編輯模式 -->
                 <template v-if="isPaymentModeEdit">
-                    <div v-for="(pm, idx) in sortedPaymentMethods" :key="'edit-pm-'+pm.id" class="flex items-center space-x-2 bg-gray-50 p-2 rounded-xl">
-                        <div class="flex flex-col space-y-0.5">
-                             <button @click="moveItem('paymentMethods', idx, -1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===0">▲</button>
-                             <button @click="moveItem('paymentMethods', idx, 1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===sortedPaymentMethods.length-1">▼</button>
+                    <div v-for="(pm, idx) in localPaymentMethods" :key="'edit-pm-'+pm.id" class="flex items-center space-x-4 bg-gray-50 p-2 rounded-xl">
+                        <div class="flex flex-col space-y-0.5 px-1">
+                             <button @click="moveItem('paymentMethods', pm.id, -1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===0">▲</button>
+                             <button @click="moveItem('paymentMethods', pm.id, 1)" class="text-gray-300 hover:text-gray-500 text-[10px]" :disabled="idx===localPaymentMethods.length-1">▼</button>
                         </div>
                         <!-- Icon -->
-                        <button @click="openIconPicker('payment', idx)" class="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-gray-500 shadow-sm border border-gray-100">
-                             <span class="material-symbols-rounded text-lg">{{ pm.icon || 'payments' }}</span>
+                        <button @click="openIconPicker('payment', pm.id)" class="w-10 h-10 aspect-square bg-white rounded-xl flex items-center justify-center text-gray-400 shadow-sm border border-gray-100 flex-shrink-0">
+                             <span class="material-symbols-rounded text-xl">{{ pm.icon || 'payments' }}</span>
                         </button>
-                        <input type="text" v-model="pm.name" @change="debouncedUpdate" class="bg-transparent text-xs font-medium text-gray-700 w-full outline-none px-2">
-                        <button @click="deleteItem('paymentMethods', idx)" class="text-gray-300 hover:text-red-400 px-2">
+                        <input type="text" v-model="pm.name" class="bg-transparent text-xs font-medium text-gray-700 w-full outline-none">
+                        <button @click="deleteItem('paymentMethods', pm.id)" class="text-gray-300 hover:text-slate-600 px-2 transition-colors">
                             <span class="material-symbols-rounded text-sm">remove_circle</span>
                         </button>
                     </div>
@@ -189,25 +248,57 @@ export const SettingsPage = {
             </div>
         </div>
 
-        <!-- 4. Account & Sync -->
-        <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
-             <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Account</h3>
-             
-             <!-- ADMIN MODE (Logged In) -->
-             <div v-if="appMode === 'ADMIN'" class="space-y-4">
-                 <div class="flex items-center space-x-3 px-2">
-                     <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                         <img v-if="config.photoURL" :src="config.photoURL" class="w-full h-full object-cover">
-                         <span v-else class="material-symbols-rounded text-gray-400 p-2">person</span>
-                     </div>
-                     <div class="flex flex-col">
-                         <span class="text-xs font-bold text-gray-700">{{ currentUser?.displayName || config.user_name || 'User' }}</span>
-                         <span class="text-[9px] text-gray-400">{{ currentUser?.email }}</span>
-                     </div>
-                 </div>
-
-                 <!-- SHARED LINK TOGGLE -->
-                 <div class="bg-gray-50 p-4 rounded-xl space-y-3">
+             <!-- 4. Account & Sync -->
+             <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-4">
+                  <h3 class="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium px-2">Account</h3>
+                  
+                  <!-- ADMIN MODE (Logged In) -->
+                  <div v-if="appMode === 'ADMIN'" class="space-y-4">
+                      <div class="flex items-center space-x-3 px-2">
+                          <div class="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
+                              <img v-if="config.photoURL" :src="config.photoURL" class="w-full h-full object-cover">
+                              <span v-else class="material-symbols-rounded text-gray-400 p-2">person</span>
+                          </div>
+                          <div class="flex flex-col justify-center">
+                              <span class="text-xs font-medium text-gray-700">{{ currentUser?.email }}</span>
+                              <span class="text-[9px] text-gray-400">已登入 Google 帳號</span>
+                          </div>
+                      </div>
+ 
+                      <!-- GOOGLE SERVICES (New) -->
+                      <div class="bg-gray-50 p-4 rounded-xl space-y-4">
+                          <div class="flex items-center space-x-2 px-1">
+                             <span class="material-symbols-rounded text-base text-gray-400">cloud_sync</span>
+                             <span class="text-xs text-gray-600 font-medium">Google Spreadsheet Services</span>
+                          </div>
+                          
+                          <div class="grid grid-cols-2 gap-3">
+                              <button @click="handleExport" :disabled="exporting" class="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-gray-100 active:scale-95 transition-all disabled:opacity-50">
+                                  <span v-if="exporting" class="material-symbols-rounded animate-spin text-lg text-gray-400">sync</span>
+                                  <span v-else class="material-symbols-rounded text-lg text-gray-400">ios_share</span>
+                                  <span class="text-[9px] text-gray-500 mt-1">匯出目前資料</span>
+                              </button>
+                              <button @click="handleBackup" :disabled="backingUp" class="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-gray-100 active:scale-95 transition-all disabled:opacity-50">
+                                  <span v-if="backingUp" class="material-symbols-rounded animate-spin text-lg text-gray-400">sync</span>
+                                  <span v-else class="material-symbols-rounded text-lg text-gray-400">backup</span>
+                                  <span class="text-[9px] text-gray-500 mt-1">立即備份 (Daily)</span>
+                              </button>
+                          </div>
+     
+                          <div class="flex items-center justify-between px-1">
+                              <div class="flex flex-col">
+                                  <span class="text-[10px] text-gray-600 font-medium tracking-wide">每日自動備份</span>
+                                  <span class="text-[8px] text-gray-300">將儲存於「日日記-個人記帳資料備份」</span>
+                              </div>
+                              <label class="relative inline-flex items-center cursor-pointer">
+                                  <input type="checkbox" v-model="localConfig.auto_backup" @change="debouncedUpdate" class="sr-only peer">
+                                  <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4A4A4A]"></div>
+                              </label>
+                          </div>
+                      </div>
+ 
+                      <!-- SHARED LINK TOGGLE -->
+                      <div class="bg-gray-50 p-4 rounded-xl space-y-3">
                      <div class="flex items-center justify-between">
                          <span class="text-xs text-gray-600 font-medium">公開分享連結 (唯讀)</span>
                          <label class="relative inline-flex items-center cursor-pointer">
@@ -229,6 +320,9 @@ export const SettingsPage = {
                  <button @click="$emit('logout')" class="w-full border border-gray-200 text-gray-500 py-3 rounded-xl text-xs font-medium active:bg-gray-50">
                      登出 Google 帳號
                  </button>
+                 <button @click="confirmDeleteData" class="w-full py-2 text-[10px] text-gray-300 tracking-widest uppercase hover:text-gray-500 transition-colors">
+                     刪除帳戶資料
+                 </button>
              </div>
 
              <!-- GUEST MODE -->
@@ -236,7 +330,7 @@ export const SettingsPage = {
                  <p class="text-[10px] text-gray-400 px-2 leading-relaxed">
                     登入 Google 帳號以開啟雲端同步、多裝置存取與分享功能。
                  </p>
-                 <button @click="$emit('login')" class="w-full bg-[#4285F4] text-white py-3 rounded-xl flex items-center justify-center space-x-2 shadow-sm active:scale-95 transition-transform">
+                 <button @click="$emit('login')" class="w-full border border-gray-200 text-gray-600 py-3 rounded-xl flex items-center justify-center space-x-2 active:scale-95 transition-transform hover:bg-gray-50">
                      <svg class="w-4 h-4 bg-white rounded-full p-0.5" viewBox="0 0 24 24">
                         <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                         <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -256,7 +350,7 @@ export const SettingsPage = {
     </section>
     `,
     props: ['config', 'friends', 'projects', 'transactions', 'appMode', 'currentUser', 'categories', 'paymentMethods'],
-    emits: ['update-config', 'update-user-data', 'view-project', 'view-friend', 'login', 'logout', 'clear-guest-data', 'create-project', 'open-icon-edit'],
+    emits: ['update-config', 'update-user-data', 'view-project', 'view-friend', 'login', 'logout', 'clear-guest-data', 'create-project', 'open-icon-edit', 'clear-account-data'],
     data() {
         return {
             localConfig: { user_name: '', fx_rate: 0.22 },
@@ -272,13 +366,42 @@ export const SettingsPage = {
 
             // Customization Data
             isCategoryModeEdit: false,
+            localCategories: [],
             isPaymentModeEdit: false,
-            sortedCategories: [],
-            sortedPaymentMethods: [],
-            debouncedTimeout: null
+            localPaymentMethods: [],
+            debouncedTimeout: null,
+            exporting: false,
+            backingUp: false
         };
     },
+    computed: {
+        expenseCategories() {
+            const list = this.isCategoryModeEdit ? this.localCategories : (this.categories || []);
+            return list
+                .filter(c => c.type === '支出')
+                .sort((a, b) => (a.order || 99) - (b.order || 99));
+        },
+        incomeCategories() {
+            const list = this.isCategoryModeEdit ? this.localCategories : (this.categories || []);
+            return list
+                .filter(c => c.type === '收入')
+                .sort((a, b) => (a.order || 99) - (b.order || 99));
+        },
+        sortedPaymentMethods() {
+            const list = this.isPaymentModeEdit ? this.localPaymentMethods : (this.paymentMethods || []);
+            return [...list].sort((a, b) => (a.order || 99) - (b.order || 99));
+        },
+        isSettingsDirty() {
+            // Check if any of the local lists differ from props
+            const catDirty = JSON.stringify(this.localCategories) !== JSON.stringify(this.categories);
+            const pmDirty = JSON.stringify(this.localPaymentMethods) !== JSON.stringify(this.paymentMethods);
+            return (this.isCategoryModeEdit && catDirty) || (this.isPaymentModeEdit && pmDirty);
+        }
+    },
     watch: {
+        isSettingsDirty(val) {
+            this.$emit('update:dirty', val);
+        },
         config: {
             handler(newVal) {
                 if (newVal) {
@@ -295,13 +418,13 @@ export const SettingsPage = {
             immediate: true,
             deep: true
         },
-        categories: {
-            handler(val) { this.sortedCategories = JSON.parse(JSON.stringify(val || [])).sort((a, b) => (a.order || 99) - (b.order || 99)); },
-            immediate: true,
-            deep: true
-        },
+        // categories watch removed as we use computed expenseCategories/incomeCategories
         paymentMethods: {
-            handler(val) { this.sortedPaymentMethods = JSON.parse(JSON.stringify(val || [])).sort((a, b) => (a.order || 99) - (b.order || 99)); },
+            handler(val) {
+                if (!this.isPaymentModeEdit) {
+                    this.localPaymentMethods = JSON.parse(JSON.stringify(val || [])).sort((a, b) => (a.order || 99) - (b.order || 99));
+                }
+            },
             immediate: true,
             deep: true
         }
@@ -360,65 +483,116 @@ export const SettingsPage = {
         },
 
         // --- Customization Logic ---
+        toggleCategoryEdit() {
+            if (!this.isCategoryModeEdit) {
+                this.localCategories = JSON.parse(JSON.stringify(this.categories || []));
+                this.isCategoryModeEdit = true;
+            }
+        },
+        saveCategoryEdit() {
+            // Re-assign order purely based on visual index
+            const updated = JSON.parse(JSON.stringify(this.localCategories));
+            const expense = updated.filter(c => c.type === '支出').sort((a, b) => (a.order || 99) - (b.order || 99));
+            const income = updated.filter(c => c.type === '收入').sort((a, b) => (a.order || 99) - (b.order || 99));
+
+            expense.forEach((c, i) => { const item = updated.find(orig => orig.id === c.id); if (item) item.order = i + 1; });
+            income.forEach((c, i) => { const item = updated.find(orig => orig.id === c.id); if (item) item.order = i + 100; });
+
+            this.$emit('update-user-data', { categories: updated });
+            this.isCategoryModeEdit = false;
+        },
+        cancelCategoryEdit() {
+            this.isCategoryModeEdit = false;
+            this.localCategories = [];
+        },
+
+        togglePaymentEdit() {
+            if (!this.isPaymentModeEdit) {
+                this.localPaymentMethods = JSON.parse(JSON.stringify(this.paymentMethods || [])).sort((a, b) => (a.order || 99) - (b.order || 99));
+                this.isPaymentModeEdit = true;
+            }
+        },
+        savePaymentEdit() {
+            this.localPaymentMethods.forEach((p, i) => p.order = i + 1);
+            this.$emit('update-user-data', { paymentMethods: this.localPaymentMethods });
+            this.isPaymentModeEdit = false;
+        },
+        cancelPaymentEdit() {
+            this.isPaymentModeEdit = false;
+            this.localPaymentMethods = [];
+        },
+
         debouncedUpdate() {
             if (this.debouncedTimeout) clearTimeout(this.debouncedTimeout);
             this.debouncedTimeout = setTimeout(() => {
-                this.saveCustomData();
+                this.$emit('update-config', this.localConfig);
             }, 1000); // Auto-save after 1s of no typing
         },
-        async saveCustomData() {
-            // Re-assign orders based on index
-            this.sortedCategories.forEach((c, i) => c.order = i + 1);
-            this.sortedPaymentMethods.forEach((p, i) => p.order = i + 1);
+        // saveCustomData Removed as we now use Save buttons
 
-            // Emit update to parent
-            this.$emit('update-user-data', {
-                categories: this.sortedCategories,
-                paymentMethods: this.sortedPaymentMethods
-            });
+        moveItem(type, id, direction) {
+            const list = type === 'paymentMethods' ? this.localPaymentMethods : this.localCategories;
+            const idx = list.findIndex(item => item.id === id);
+            if (idx === -1) return;
+
+            if (type === 'paymentMethods') {
+                if (idx + direction < 0 || idx + direction >= list.length) return;
+                const temp = list[idx];
+                list[idx] = list[idx + direction];
+                list[idx + direction] = temp;
+                // Reactive update for array swap
+                list.splice(idx, 1, list[idx]);
+            } else {
+                const item = list[idx];
+                const typeItems = list.filter(c => c.type === item.type).sort((a, b) => (a.order || 99) - (b.order || 99));
+                const typeIdx = typeItems.findIndex(c => c.id === id);
+
+                if (typeIdx + direction < 0 || typeIdx + direction >= typeItems.length) return;
+
+                const targetId = typeItems[typeIdx + direction].id;
+                const targetGlobalIdx = list.findIndex(c => c.id === targetId);
+
+                // Swap orders
+                const tempOrder = list[idx].order;
+                list[idx].order = list[targetGlobalIdx].order;
+                list[targetGlobalIdx].order = tempOrder;
+            }
         },
-        moveItem(type, index, direction) {
-            const list = type === 'categories' ? this.sortedCategories : this.sortedPaymentMethods;
-            if (index + direction < 0 || index + direction >= list.length) return;
-
-            // Swap
-            const temp = list[index];
-            list[index] = list[index + direction];
-            list[index + direction] = temp;
-
-            this.saveCustomData(); // Save immediately on reorder
-        },
-        async deleteItem(type, index) {
+        async deleteItem(type, id) {
             if (!await this.dialog.confirm("確定刪除此項目？")) return;
-            const list = type === 'categories' ? this.sortedCategories : this.sortedPaymentMethods;
-            list.splice(index, 1);
-            this.saveCustomData();
+            const list = type === 'categories' ? this.localCategories : this.localPaymentMethods;
+            const idx = list.findIndex(item => item.id === id);
+            if (idx !== -1) list.splice(idx, 1);
         },
-        addCategory() {
-            this.sortedCategories.push({
-                id: 'cat_' + Date.now(),
+        addCategory(type = '支出') {
+            const id = 'cat_' + Date.now();
+            this.localCategories.push({
+                id: id,
                 name: '新類別',
-                icon: 'star',
-                type: '支出',
-                order: this.sortedCategories.length + 1
+                icon: type === '支出' ? 'star' : 'payments',
+                type: type,
+                order: 999
             });
-            this.saveCustomData();
+            this.openIconPicker('category', id);
         },
         addPaymentMethod() {
-            this.sortedPaymentMethods.push({
-                id: 'pm_' + Date.now(),
+            const id = 'pm_' + Date.now();
+            this.localPaymentMethods.push({
+                id: id,
                 name: '新支付',
                 icon: 'payments',
-                order: this.sortedPaymentMethods.length + 1
+                order: 999
             });
-            this.saveCustomData();
+            this.openIconPicker('payment', id);
         },
-        openIconPicker(type, index) {
-            const list = type === 'category' ? this.sortedCategories : this.sortedPaymentMethods;
-            const item = list[index];
+        openIconPicker(type, id) {
+            const list = type === 'category' ? this.localCategories : this.localPaymentMethods;
+            const item = list.find(it => it.id === id);
+            if (!item) return;
+
             this.$emit('open-icon-edit', {
                 type,
-                index,
+                id: id,
                 name: item.name,
                 icon: item.icon || 'payments'
             });
@@ -428,6 +602,47 @@ export const SettingsPage = {
         getStatusLabel(status) {
             const map = { 'Active': '進行中', 'Archived': '已封存', 'Planned': '計劃中' };
             return map[status] || status;
+        },
+        async confirmDeleteData() {
+            if (await this.dialog.confirm("確定要刪除所有帳戶資料嗎？\n此動作將清空雲端與本地的所有紀錄，且無法復原。", { confirmText: '確定刪除', cancelText: '取消' })) {
+                this.$emit('clear-account-data');
+            }
+        },
+        async handleExport() {
+            if (this.exporting) return;
+            this.exporting = true;
+            try {
+                let token = API.getGoogleToken();
+                if (!token) token = await API.requestIncrementalScope();
+                if (!token) throw new Error("尚未獲得授權");
+
+                const now = new Date();
+                const title = `記帳資料匯出_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+
+                // Use props.transactions for full export from settings
+                const result = await GoogleSheetsService.exportToNewSheet(title, this.transactions, this.categories, token);
+                window.open(result.spreadsheetUrl, '_blank');
+            } catch (e) {
+                this.dialog.alert("匯出失敗: " + e.message);
+            } finally {
+                this.exporting = false;
+            }
+        },
+        async handleBackup() {
+            if (this.backingUp) return;
+            this.backingUp = true;
+            try {
+                let token = API.getGoogleToken();
+                if (!token) token = await API.requestIncrementalScope();
+                if (!token) throw new Error("尚未獲得授權");
+
+                const result = await GoogleSheetsService.backupTransactions(this.transactions, this.categories, token);
+                this.dialog.alert(`備份成功！\n分頁：${result.sheetTitle}\n檔案已更新於 Google Drive。`, { title: '備份完成' });
+            } catch (e) {
+                this.dialog.alert("備份失敗: " + e.message);
+            } finally {
+                this.backingUp = false;
+            }
         }
     },
     inject: ['dialog'],

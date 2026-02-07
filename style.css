@@ -28,6 +28,25 @@ body {
     display: none;
 }
 
+/* Custom Subtle Scrollbar */
+.subtle-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+.subtle-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
 .nav-item {
     transition: all 0.3s ease;
     padding: 8px;

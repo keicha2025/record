@@ -70,12 +70,12 @@
         <main class="w-full px-4 pt-4 pb-32">
             <!-- Viewer Dashboard -->
             <view-dashboard v-if="currentTab === 'overview' && appMode === 'VIEWER'" :transactions="transactions"
-                :stats="stats" @switch-tab="currentTab = $event"></view-dashboard>
+                :stats="stats" @switch-tab="handleTabChange"></view-dashboard>
 
             <!-- Regular Admin/Guest Dashboard -->
             <overview-page v-else-if="currentTab === 'overview'" :transactions="transactions" :stats="stats"
                 :fx-rate="fxRate"
-                @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; currentTab = 'history'"></overview-page>
+                @go-to-history="historyFilter = { mode: $event.mode, categoryId: null, friendName: null, currency: $event.currency }; handleTabChange('history')"></overview-page>
 
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories"
                 :payment-methods="paymentMethods" :projects="projects" :fx-rate="fxRate" @edit-item="handleEditItem"
@@ -98,7 +98,8 @@
                 :categories="categories" :payment-methods="paymentMethods" @update-config="handleUpdateConfig"
                 @update-user-data="handleUpdateUserData" @login="handleGoogleLogin" @logout="handleLogout"
                 @clear-guest-data="clearGuestData" @view-friend="handleViewFriend" @view-project="handleViewProject"
-                @create-project="handleCreateProject" @open-icon-edit="handleOpenIconEdit"></settings-page>
+                @create-project="handleCreateProject" @open-icon-edit="handleOpenIconEdit"
+                @clear-account-data="handleClearAccountData" @update:dirty="isSettingsDirty = $event"></settings-page>
 
             <!-- Icon Edit Page -->
             <icon-edit-page v-if="currentTab === 'icon-edit'" :context="iconEditContext" @select="handleSelectIcon"
@@ -109,7 +110,7 @@
                 @update-project="handleUpdateProject" @view-history="handleViewHistory"></project-detail-page>
         </main>
 
-        <app-footer v-model:current-tab="currentTab" :app-mode="appMode">
+        <app-footer :current-tab="currentTab" @update:current-tab="handleTabChange" :app-mode="appMode">
         </app-footer>
 
 
@@ -127,7 +128,7 @@
         }
     </script>
     <script src="./js/env.js"></script>
-    <script type="module" src="./js/app.js"></script>
+    <script type="module" src="./js/app.js?v=1.1"></script>
 </body>
 
 </html>

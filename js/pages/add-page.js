@@ -213,14 +213,6 @@ export const AddPage = {
             // However, we need to update the `projects` prop.
             // For now, let's just alert user they need to refresh, or improved: emit 'refresh-data'
 
-            try {
-                // Use the same action as settings-page
-                await fetch('https://script.google.com/macros/s/AKfycbzTf3sB7iH4t9t3r5yD5e7x9c4q6w8e1r2t/exec', { // Mock URL? NO. use CONFIG.GAS_URL
-                    // Actually we don't have direct access to API object here easily unless imported.
-                    // Let's emit an event to the parent "submit-project"
-                });
-                // Wait, importing API in a component file is fine.
-            } catch (e) { }
 
             // Let's stick to emitting an event to handle the API call in parent (App.js) which already has API access.
             this.$emit('create-project', this.newProjectName);
