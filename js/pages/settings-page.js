@@ -616,13 +616,20 @@ export const SettingsPage = {
                 if (!token) token = await API.requestIncrementalScope();
                 if (!token) throw new Error("尚未獲得授權");
 
-                const now = new Date();
-                const title = `記帳資料匯出_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+                const data = {
+                    transactions: this.transactions,
+                    categories: this.categories,
+                    paymentMethods: this.paymentMethods,
+                    projects: this.projects,
+                    friends: this.friends,
+                    config: this.config
+                };
 
-                // Use props.transactions for full export from settings
-                const result = await GoogleSheetsService.exportToNewSheet(title, this.transactions, this.categories, token);
-                window.open(result.spreadsheetUrl, '_blank');
+                const result = await GoogleSheetsService.exportReadableSheet(data, token);
+                this.dialog.alert(`匯出成功！\n檔案已儲存於「${result.folder}」資料夾。`, { title: '匯出完成' });
+                window.open(result.url, '_blank');
             } catch (e) {
+                console.error(e);
                 this.dialog.alert("匯出失敗: " + e.message);
             } finally {
                 this.exporting = false;
@@ -636,9 +643,19 @@ export const SettingsPage = {
                 if (!token) token = await API.requestIncrementalScope();
                 if (!token) throw new Error("尚未獲得授權");
 
-                const result = await GoogleSheetsService.backupTransactions(this.transactions, this.categories, token);
-                this.dialog.alert(`備份成功！\n分頁：${result.sheetTitle}\n檔案已更新於 Google Drive。`, { title: '備份完成' });
+                const data = {
+                    transactions: this.transactions,
+                    categories: this.categories,
+                    paymentMethods: this.paymentMethods,
+                    projects: this.projects,
+                    friends: this.friends,
+                    config: this.config
+                };
+
+                const result = await GoogleSheetsService.backupFullData(data, token);
+                this.dialog.alert(`備份成功！\n檔案：${result.file}\n已儲存於「${result.folder}」資料夾。`, { title: '備份完成' });
             } catch (e) {
+                console.error(e);
                 this.dialog.alert("備份失敗: " + e.message);
             } finally {
                 this.backingUp = false;

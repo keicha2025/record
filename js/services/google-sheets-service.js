@@ -1,154 +1,158 @@
 export const GoogleSheetsService = {
-    /**
-     * Create a new Google Spreadsheet
-     */
+    // --- Drive Folder & File Helpers ---
+
+    async ensureFolder(name, token) {
+        let folder = await this.findFolder(name, token);
+        if (!folder) folder = await this.createFolder(name, token);
+        return folder;
+    },
+
+    async findFolder(name, token) {
+        const q = `name = '${name}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        return data.files?.[0];
+    },
+
+    async createFolder(name, token) {
+        const res = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder' })
+        });
+        if (!res.ok) throw new Error("Failed to create folder");
+        return await res.json();
+    },
+
+    async moveFileToFolder(fileId, folderId, token) {
+        // Get current parents to remove them (move operation)
+        const getFile = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=parents`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        const fileData = await getFile.json();
+        const prevParents = fileData.parents?.join(',') || '';
+
+        const url = `https://www.googleapis.com/drive/v3/files/${fileId}?addParents=${folderId}&removeParents=${prevParents}`;
+        await fetch(url, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+    },
+
+    async saveJsonFile(folderId, name, data, token) {
+        const metadata = { name, parents: [folderId], mimeType: 'application/json' };
+        const fileContent = JSON.stringify(data, null, 2);
+
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` }, // Browser auto-sets Content-Type w/ boundary
+            body: form
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error?.message || "JSON Upload Failed");
+        }
+        return await res.json();
+    },
+
+    // --- Sheets API Helpers ---
+
     async createSpreadsheet(title, token) {
         const response = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                properties: { title }
-            })
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ properties: { title } })
         });
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || "無法建立試算表");
-        }
+        if (!response.ok) throw new Error("無法建立試算表");
         return await response.json();
     },
 
-    /**
-     * Find a spreadsheet by exact name using Drive API
-     */
-    async findSpreadsheetByName(title, token) {
-        const q = `name = '${title.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`;
-        const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
-
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || "搜尋檔案失敗");
-        }
-
-        const data = await response.json();
-        return data.files && data.files.length > 0 ? data.files[0] : null;
-    },
-
-    /**
-     * Write data to a specific range (e.g., 'Sheet1!A1')
-     */
     async writeData(spreadsheetId, range, values, token) {
         const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`;
-
         const response = await fetch(url, {
             method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ values })
         });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error?.message || "寫入資料失敗");
-        }
+        if (!response.ok) throw new Error("寫入資料失敗");
         return await response.json();
     },
 
-    /**
-     * Add or clear a sheet (tab) and write values
-     */
-    async upsertSheet(spreadsheetId, sheetTitle, values, token) {
-        // 1. Get spreadsheet metadata to see if sheet exists
-        const metaResponse = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const meta = await metaResponse.json();
-        const existingSheet = meta.sheets.find(s => s.properties.title === sheetTitle);
-
-        if (existingSheet) {
-            // Clear existing data first
-            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetTitle)}:clear`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-        } else {
-            // Add new sheet
-            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    requests: [{
-                        addSheet: { properties: { title: sheetTitle } }
-                    }]
-                })
-            });
-        }
-
-        // 2. Write Data
-        return await this.writeData(spreadsheetId, `${sheetTitle}!A1`, values, token);
-    },
+    // --- High Level Functions ---
 
     /**
-     * Standard Export to a NEW sheet
+     * Backup Full Data to JSON in '/日日記' folder
      */
-    async exportToNewSheet(title, transactions, categories, token) {
-        const rows = this.prepareRows(transactions, categories);
-        const ss = await this.createSpreadsheet(title, token);
-        await this.writeData(ss.spreadsheetId, 'A1', rows, token);
-        return ss;
-    },
-
-    /**
-     * Advanced Backup to a FIXED file with daily tabs
-     */
-    async backupTransactions(transactions, categories, token) {
-        const fileName = "日日記-個人記帳資料備份";
+    async backupFullData(data, token) {
+        const folder = await this.ensureFolder('日日記', token);
         const now = new Date();
-        const sheetTitle = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}日日記備份`;
+        const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+        const fileName = `backup_${dateStr}.json`;
 
-        // 1. Find or Create file
-        let file = await this.findSpreadsheetByName(fileName, token);
-        let spreadsheetId;
-        if (!file) {
-            const ss = await this.createSpreadsheet(fileName, token);
-            spreadsheetId = ss.spreadsheetId;
-        } else {
-            spreadsheetId = file.id;
-        }
-
-        // 2. Prepare Data
-        const rows = this.prepareRows(transactions, categories);
-
-        // 3. Upsert Tab
-        await this.upsertSheet(spreadsheetId, sheetTitle, rows, token);
-
-        return {
-            spreadsheetId,
-            spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
-            sheetTitle
-        };
+        await this.saveJsonFile(folder.id, fileName, data, token);
+        return { folder: folder.name, file: fileName };
     },
 
-    prepareRows(transactions, categories) {
-        const headers = ["日期", "項目名稱", "分類", "金額", "原始幣別", "支付方式", "分帳", "個人份額", "備註", "付款人", "專案ID"];
+    /**
+     * Export Readable Spreadsheet to '/日日記' folder
+     */
+    async exportReadableSheet(data, token) {
+        const folder = await this.ensureFolder('日日記', token);
+        const now = new Date();
+        const title = `記帳匯出_${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+        // 1. Create Sheet (Root)
+        const ss = await this.createSpreadsheet(title, token);
+
+        // 2. Move to Folder
+        await this.moveFileToFolder(ss.spreadsheetId, folder.id, token);
+
+        // 3. Prepare Readable Data
+        const rows = this.prepareReadableRows(data);
+
+        // 4. Write
+        await this.writeData(ss.spreadsheetId, 'A1', rows, token);
+
+        return { url: ss.spreadsheetUrl, folder: folder.name };
+    },
+
+    /**
+     * Helper to convert IDs to Names for Export
+     */
+    prepareReadableRows(data) {
+        const { transactions, categories, paymentMethods, projects } = data;
+        const headers = ["日期", "項目名稱", "分類", "金額", "幣別", "支付方式", "分帳狀態", "個人金額", "備註", "付款人", "專案", "分帳對象"];
         const rows = [headers];
+
         transactions.forEach(t => {
-            const catName = categories.find(c => c.id === t.categoryId)?.name || '其他';
+            const cat = categories.find(c => c.id === t.categoryId);
+            const pm = paymentMethods.find(p => p.id === t.paymentMethod);
+            const proj = projects.find(p => p.id === t.projectId);
+
+            const catName = cat ? cat.name : (t.categoryId === 'income' ? '收入' : '其他');
+            const pmName = pm ? pm.name : (t.paymentMethod || '');
+            const projName = proj ? proj.name : '';
+
+            // Format Friend Name (Split Object)
+            // Logic: t.friendName string
+            const friendName = t.friendName || '';
+
             rows.push([
-                t.spendDate, t.name, catName, t.amount, t.originalCurrency || t.currency || 'JPY',
-                t.paymentMethod || '', t.isSplit ? '是' : '否', t.personalShare || t.amount,
-                t.note || '', t.payer || '我', t.projectId || ''
+                t.spendDate,
+                t.name,
+                catName,
+                t.amount,
+                t.originalCurrency || t.currency || 'JPY',
+                pmName,
+                t.isSplit ? '是' : '否',
+                t.personalShare || t.amount,
+                t.note || '',
+                t.payer || '我',
+                projName,
+                friendName
             ]);
         });
         return rows;

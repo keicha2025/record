@@ -45,9 +45,8 @@ export const OverviewPage = {
         <div class="bg-white p-6 rounded-2xl muji-shadow border border-gray-50 flex justify-between items-center active:scale-[0.98] transition-all" @click="$emit('go-to-history', { mode: 'debt' })">
                 <div>
                     <p class="text-[10px] text-gray-400 font-medium uppercase tracking-widest">債務資料 ({{ baseCurrency }})</p>
-                    <p class="text-xl font-light mt-1" :class="debtDisplayValue >= 0 ? 'text-gray-600' : 'text-red-300'">
-                        {{ getCurrencySymbol }} {{ formatNumber(Math.abs(debtDisplayValue)) }}
-                        <span class="text-xs ml-1">{{ debtDisplayValue >= 0 ? ' (Credit)' : ' (Debt)' }}</span>
+                    <p class="text-xl font-light mt-1 text-gray-700">
+                        {{ getCurrencySymbol }} {{ formatNumber(debtDisplayValue) }}
                     </p>
                 </div>
             <span class="material-symbols-rounded text-gray-200">arrow_forward_ios</span>
