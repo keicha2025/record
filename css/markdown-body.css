@@ -1,0 +1,201 @@
+.markdown-body {
+    color: var(--color-text-main);
+    line-height: 1.8;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+}
+
+/* Headers */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+    color: var(--color-primary);
+    font-weight: 500;
+    margin-top: 2.5rem;
+    margin-bottom: 1.25rem;
+    letter-spacing: 0.1em;
+    line-height: 1.4;
+}
+
+.markdown-body h1 { font-size: 1.75rem; border-bottom: 1px solid var(--color-border-medium); padding-bottom: 0.5rem; }
+.markdown-body h2 { font-size: 1.5rem; border-bottom: 1px solid var(--color-border-medium); padding-bottom: 0.4rem; }
+.markdown-body h3 { font-size: 1.25rem; }
+.markdown-body h4 { font-size: 1.1rem; }
+.markdown-body h5 { font-size: 1rem; }
+.markdown-body h6 { font-size: 0.9rem; color: var(--color-text-secondary); }
+
+/* Paragraphs & Spacing */
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body dl,
+.markdown-body table,
+.markdown-body blockquote {
+    margin-bottom: 1.25rem;
+}
+
+/* Links */
+.markdown-body a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    transition: opacity 0.2s;
+}
+
+.markdown-body a:hover {
+    opacity: 0.7;
+}
+
+/* Lists */
+.markdown-body ul,
+.markdown-body ol {
+    padding-left: 1.5rem;
+}
+
+.markdown-body ul { list-style-type: disc; }
+.markdown-body ol { list-style-type: decimal; }
+
+.markdown-body li + li {
+    margin-top: 0.5rem;
+}
+
+/* Task Lists */
+.markdown-body .task-list-item {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.markdown-body .task-list-item input {
+    margin-right: 0.5rem;
+}
+
+/* Code Blocks */
+.markdown-body pre {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border-medium);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    overflow-x: auto;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.markdown-body code {
+    background: var(--color-bg-input);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.4rem;
+    font-size: 0.9em;
+    color: var(--color-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.markdown-body pre code {
+    background: transparent;
+    padding: 0;
+    font-size: 13px;
+    color: inherit;
+}
+
+/* Blockquotes */
+.markdown-body blockquote {
+    border-left: 3px solid var(--color-border-medium);
+    padding-left: 1rem;
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+/* Tables */
+.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+    font-size: 14px;
+}
+
+.markdown-body th,
+.markdown-body td {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-medium);
+}
+
+.markdown-body th {
+    background: var(--color-bg-input);
+    font-weight: 500;
+    text-align: left;
+}
+
+/* Images */
+.markdown-body img {
+    max-width: 100%;
+    border-radius: 1rem;
+    margin: 1rem 0;
+}
+
+/* Custom Containers (Tips, Warning, Danger) */
+.markdown-body .container-block {
+    padding: 1.25rem;
+    border-radius: 1rem;
+    margin: 1.5rem 0;
+    border: 1px solid transparent;
+}
+
+.markdown-body .container-block.tip {
+    background-color: #f0fdf4;
+    border-color: #dcfce7;
+    color: #166534;
+}
+
+.markdown-body .container-block.warning {
+    background-color: #fffbeb;
+    border-color: #fef3c7;
+    color: #92400e;
+}
+
+.markdown-body .container-block.danger {
+    background-color: #fef2f2;
+    border-color: #fee2e2;
+    color: #991b1b;
+}
+
+.markdown-body .container-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.1em;
+}
+
+/* Misc */
+.markdown-body hr {
+    border: 0;
+    border-top: 1px solid var(--color-border-medium);
+    margin: 3rem 0;
+}
+
+.markdown-body kbd {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border-medium);
+    border-bottom-width: 3px;
+    border-radius: 0.4rem;
+    padding: 0.1rem 0.4rem;
+    font-size: 11px;
+    font-family: inherit;
+}
+
+.markdown-body details {
+    background: var(--color-bg-input);
+    border: 1px solid var(--color-border-medium);
+    border-radius: 1rem;
+    padding: 1rem;
+}
+
+.markdown-body summary {
+    cursor: pointer;
+    font-weight: 500;
+    outline: none;
+}
+
+.markdown-body summary:hover { opacity: 0.8; }

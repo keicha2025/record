@@ -259,8 +259,16 @@
     - **Full Viewer Support**: Extended currency toggling and smart detection to Viewer mode (shared links), ensuring a consistent experience for all users.
     - 貨幣切換器優化：Header 顯示邏輯調整為總覽與統計頁面永遠顯示。新增「智慧判斷」功能，系統載入時會自動依據最新一筆交易之幣別（日幣或台幣）切換顯示基準，且同步支援分享連結之唯讀模式。
 
+- **Markdown Rendering System**:
+    - **New Infrastructure**: Established a complete Markdown rendering pipeline for future documentation (Guides, Privacy Policies).
+    - **Muji-Style Integration**: Created `css/markdown-body.css` using existing design tokens to ensure all documentation perfectly matches the app's aesthetic.
+    - **Advanced Syntax Support**: Added support for GFM, code syntax highlighting (highlight.js), custom alert containers (`::: tip`, etc.), and interactive elements like `details/summary` and `kbd`.
+    - **Demo Page**: Created `page-demo.html` to showcase the rendering capabilities using `markdown-demo.md`.
+    - Markdown 渲染系統：建立完整的預覽機制，整合 `marked.js` 與 `highlight.js` 並搭配自訂 CSS 樣式表，確保未來的操作說明文件能完美呈現「無印風格」，並支援程式碼高亮與特殊提示框。
+
 ### Technical Details
 - Updated `js/api.js` with `_deleteCollectionChunked` helper and refined `deleteFullAccount`.
 - Updated `js/app.js` with `await` on all `dialog.alert` calls, refined `finally` block logic, added `window.scrollTo` to `handleSubmit`, and implemented smart currency detection in `loadData`.
 - Updated `js/view-app.js` and `view.html` to support the header switcher and base currency management in Viewer mode.
-- 修正 `js/api.js` 與 `js/app.js` 的非同步操作流程與批次刪除限制，優化 `handleSubmit` 的捲動回饋，並全面整合貨幣智慧切換邏輯。
+- Created `css/markdown-body.css`, `js/components/markdown-renderer.js`, and `page-demo.html`.
+- 修正 `js/api.js` 與 `js/app.js` 的非同步操作流程與批次刪除限制，優化 `handleSubmit` 的捲動回饋，全面整合貨幣智慧切換邏輯，並新增 Markdown 前端渲染解決方案。
