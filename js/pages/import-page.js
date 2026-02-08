@@ -149,8 +149,7 @@ export const ImportPage = {
                 await this.dialog.alert(`匯入成功！\n新增/更新了 ${result.count} 筆資料。`);
 
                 // Refresh App Data
-                this.$emit('refresh-data');
-                this.$emit('back'); // Or stay here? Back seems better.
+                window.location.reload();
             } catch (e) {
                 console.error(e);
                 this.log("錯誤: " + e.message);

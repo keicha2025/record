@@ -272,7 +272,10 @@ export const SettingsPage = {
                              <span class="text-xs text-gray-600 font-medium">Google Spreadsheet Services</span>
                           </div>
                           
-                          <div class="grid grid-cols-2 gap-3 pt-2">
+                          <p class="text-[10px] text-gray-400 px-1 pb-2">
+                              將儲存於 Google 雲端硬碟「日日記」資料夾
+                          </p>
+                          <div class="grid grid-cols-2 gap-3">
                               <button @click="handleBackup" :disabled="backingUp" class="flex flex-col items-center justify-center p-4 bg-white rounded-xl border border-gray-100 active:scale-95 transition-all disabled:opacity-50 hover:bg-gray-50">
                                   <span v-if="backingUp" class="w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></span>
                                   <span v-else class="material-symbols-rounded text-xl text-gray-400">cloud_sync</span>
@@ -283,10 +286,7 @@ export const SettingsPage = {
                                   <span v-else class="material-symbols-rounded text-xl text-gray-400">ios_share</span>
                                   <span class="text-[10px] text-gray-500 mt-2 font-medium tracking-wide">匯出</span>
                               </button>
-                          </div>
-                          <p class="text-[10px] text-gray-400 text-center px-4 pt-2 pb-1">
-                              將儲存於 Google 雲端硬碟「日日記」資料夾
-                          </p>                <div class="flex items-center justify-between px-1">
+                          </div>                <div class="flex items-center justify-between px-1">
                               <div class="flex flex-col">
                                   <span class="text-[10px] text-gray-600 font-medium tracking-wide">每日自動備份</span>
                                   <span class="text-[8px] text-gray-300"></span>

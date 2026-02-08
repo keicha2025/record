@@ -121,6 +121,10 @@
   - 介面優化：匯入頁面改採與歷史紀錄頁面一致的灰階色系，並加入標準頁首。
 - **Layout Adjustment**: Reverted "Backup" and "Export" buttons to a side-by-side grid layout for better accessibility.
   - 版面調整：將備份與匯出按鈕還原為並排網格佈局。
+- **UI Refinement**: Adjusted the position of the backup description text to be above the buttons and left-aligned.
+  - 介面優化：調整備份說明文字位置至按鈕上方並靠左對齊。
+- **UX Improvement**: Implemented auto-reload after successful data import to ensure users see updated data immediately.
+  - 使用者體驗優化：資料匯入成功後自動重新整理頁面，確保使用者即時看到最新資料。
 
 ### Technical Details
 - Added `js/pages/import-page.js` component with file parsing and `API.importData` integration.
