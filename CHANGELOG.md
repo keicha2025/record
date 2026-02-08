@@ -136,8 +136,11 @@
 - **UI Update**: Renamed "Delete Account Data" to "Delete Bookkeeping Data" to better reflect the action's scope.
   - 介面更新：將「刪除帳戶資料」更名為「刪除記帳資料」，以更準確描述該功能。
 - **Feature**: Implemented "Delete Account" functionality with enhanced security.
-  - 新功能：實作「註銷帳戶」功能。使用者需重新驗證身分，且系統會比對登入帳號是否一致，防止誤刪。
+  - 新功能：實作「註銷帳戶」功能。改用 `reauthenticateWithPopup` 確保僅驗證且不切換登入狀態。
+  - **Security**: Added identity verification to prevent session hijacking if wrong account is used.
   - **Fix**: Resolved an issue where app initialization prevented some event handlers from attaching correctly (refactored `app.js`).
+- **UI Update**: Updated Delete Account confirmation text for clarity.
+  - 介面更新：修改註銷確認視窗文字，強調「此操作無法復原」。
 - **UI Update**: Updated Delete Account confirmation text for clarity.
   - 介面更新：修改註銷確認視窗文字，強調「此操作無法復原」。
 

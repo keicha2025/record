@@ -23,7 +23,8 @@ import {
     signInWithPopup,
     GoogleAuthProvider,
     onAuthStateChanged,
-    signOut
+    signOut,
+    reauthenticateWithPopup
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -59,17 +60,18 @@ export {
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider,
+    reauthenticateWithPopup,
+    // Firestore
     collection,
     doc,
     setDoc,
     addDoc,
-    getDoc,
     getDocs,
     updateDoc,
     deleteDoc,
     query,
-    where,
     orderBy,
-    onSnapshot,
+    where,
+    getDoc,
     writeBatch
 };

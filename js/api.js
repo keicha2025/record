@@ -1,6 +1,7 @@
 import {
     db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider,
-    collection, doc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, query, orderBy, where, getDoc, writeBatch
+    collection, doc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, query, orderBy, where, getDoc, writeBatch,
+    reauthenticateWithPopup
 } from './firebase-config.js';
 
 import { CONFIG } from './config.js?v=1.3';
@@ -47,6 +48,18 @@ export const API = {
             return result.user;
         } catch (error) {
             console.error("Login Failed", error);
+            throw error;
+        }
+    },
+
+    async reauthenticate() {
+        try {
+            const user = auth.currentUser;
+            if (!user) throw new Error("No user logged in");
+            const result = await reauthenticateWithPopup(user, googleProvider);
+            return result.user;
+        } catch (error) {
+            console.error("Re-auth Failed", error);
             throw error;
         }
     },

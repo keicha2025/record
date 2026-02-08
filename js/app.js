@@ -789,7 +789,7 @@ createApp({
                 const originalEmail = currentUser.value.email;
 
                 try {
-                    const newUser = await API.login(); // Re-login
+                    const newUser = await API.reauthenticate(); // Re-auth instead of generic login
 
                     // Verification Check
                     if (newUser.email !== originalEmail) {
