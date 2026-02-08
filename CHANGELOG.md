@@ -135,9 +135,11 @@
   - 新功能：實作「訪客資料合併」功能。登入時若偵測到訪客資料，系統將詢問是否將其存入 Google 帳戶。
 - **UI Update**: Renamed "Delete Account Data" to "Delete Bookkeeping Data" to better reflect the action's scope.
   - 介面更新：將「刪除帳戶資料」更名為「刪除記帳資料」，以更準確描述該功能。
-- **Feature**: Implemented "Delete Account" functionality with re-authentication step.
-  - 新功能：實作「註銷帳戶」功能。使用者需重新驗證身分後方可永久刪除帳戶及其所有資料。
+- **Feature**: Implemented "Delete Account" functionality with enhanced security.
+  - 新功能：實作「註銷帳戶」功能。使用者需重新驗證身分，且系統會比對登入帳號是否一致，防止誤刪。
   - **Fix**: Resolved an issue where app initialization prevented some event handlers from attaching correctly (refactored `app.js`).
+- **UI Update**: Updated Delete Account confirmation text for clarity.
+  - 介面更新：修改註銷確認視窗文字，強調「此操作無法復原」。
 
 ### Technical Details
 - Added `js/pages/import-page.js` component with file parsing and `API.importData` integration.

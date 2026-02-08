@@ -775,20 +775,30 @@ createApp({
 
             handleDeleteAccount: async () => {
                 // 1. Confirm Request
-                const confirmed = await dialog.confirm(
-                    "請重新登入驗證身分，驗證後將執行帳戶刪除。\n(刪除後所有資料將無法復原)",
-                    {
-                        title: "註銷帳戶",
-                        confirmText: "進行驗證",
-                        cancelText: "取消"
-                    }
+                const confirmMessage = "請重新登入驗證身分以刪除帳戶，此操作無法復原。";
+                const confirmed = await dialog.confirm(confirmMessage, {
+                    title: "註銷帳戶",
+                    confirmText: "進行驗證",
+                    cancelText: "取消"
+                }
                 );
 
                 if (!confirmed) return;
 
-                // 2. Re-authenticate
+                // 2. Re-authenticate & Verify Identity
+                const originalEmail = currentUser.value.email;
+
                 try {
-                    await API.login(); // Re-login to get fresh credential
+                    const newUser = await API.login(); // Re-login
+
+                    // Verification Check
+                    if (newUser.email !== originalEmail) {
+                        await dialog.alert("驗證身分不符，請登入原本的帳戶 (" + originalEmail + ")", "驗證失敗");
+                        // Optional: logout the wrong user to avoid confusion? 
+                        // Actually API.login updates auth state globally.
+                        // We should probably help them switch back or just stop here.
+                        return;
+                    }
 
                     loading.value = true;
                     // 3. Delete Account
