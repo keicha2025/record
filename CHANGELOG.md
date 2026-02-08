@@ -155,3 +155,25 @@
 - **Payer Pre-selection**:
   - **Default to "Me"**: The payer field in the Add Page now strictly defaults to "Me" (我), reducing clicks for the most common use case.
 
+
+# Changelog - 2026-02-08 Update (Viewer Mode & Security)
+
+## [2026-02-08T12:12:00Z] Viewer Mode Refactor & Security Update
+
+### Features & Improvements
+- **Viewer Mode 2.0**:
+  - **3-Layer Dashboard**: Completely redesigned the Overview page in Viewer Mode for better information hierarchy.
+  - **Main Card**: Now successfully integrates User Name and Navigation shortcuts (Transactions/Stats) into a single cohesive card. Removed "Read-only" text for a cleaner look.
+  - **Collection Section**: Introduced a new bottom section to display secondary information like FX Rate, Friends, and Projects.
+  - **Simplified CTA**: Refined the "Guest Mode" call-to-action to be less intrusive.
+  - 閱覽模式 2.0：全面重構總覽頁面。將導覽按鈕整合至主卡片，並新增 Collection 區塊顯示次要資訊。
+
+### Technical Details
+- **Firestore Security**:
+  - Implemented `firestore.rules` to secure the database while allowing public read access for Shared Links (`sharedId`).
+  - Fixed `Missing or insufficient permissions` error by properly defining access rules.
+  - 資料庫安全：實作 Firestore 安全規則，在保護資料的同時允許分享連結的正常讀取。
+- **App Logic**:
+  - Implemented `hasMultipleCurrencies` to intelligently toggle the currency switcher only when needed.
+  - Fixed duplicate import syntax error in `view-dashboard.js`.
+
