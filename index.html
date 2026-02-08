@@ -102,7 +102,8 @@
                 @clear-guest-data="clearGuestData" @view-friend="handleViewFriend" @view-project="handleViewProject"
                 @create-project="handleCreateProject" @open-icon-edit="handleOpenIconEdit"
                 @clear-account-data="handleClearAccountData" @view-import="currentTab = 'import'"
-                @delete-account="handleDeleteAccount" @update:dirty="isSettingsDirty = $event"></settings-page>
+                @delete-account="handleDeleteAccount" @update:dirty="isSettingsDirty = $event"
+                @manage-shared-links="currentTab = 'shared-links'"></settings-page>
 
             <!-- Icon Edit Page -->
             <icon-edit-page v-if="currentTab === 'icon-edit'" :context="iconEditContext" @select="handleSelectIcon"
@@ -116,6 +117,17 @@
             <!-- Import Page -->
             <import-page v-if="currentTab === 'import'" @back="currentTab = 'settings'"
                 @refresh-data="retrySync"></import-page>
+
+            <!-- Shared Links Pages -->
+            <shared-links-page v-if="currentTab === 'shared-links'" :current-user="currentUser"
+                @back="currentTab = 'settings'"
+                @create-link="() => { editingLink = null; currentTab = 'edit-shared-links'; }"
+                @edit-link="(link) => { editingLink = link; currentTab = 'edit-shared-links'; }"></shared-links-page>
+
+            <edit-shared-links-page v-if="currentTab === 'edit-shared-links'" :link-data="editingLink"
+                :projects="projects" :default-user-name="systemConfig.user_name" :current-user="currentUser"
+                @back="currentTab = 'shared-links'" @saved="currentTab = 'shared-links'"
+                @deleted="currentTab = 'shared-links'"></edit-shared-links-page>
         </main>
 
         <app-footer :current-tab="currentTab" @update:current-tab="handleTabChange" :app-mode="appMode">
@@ -135,8 +147,8 @@
             navigator.serviceWorker.register('./sw.js');
         }
     </script>
-    <script src="./js/env.js"></script>
-    <script type="module" src="./js/app.js?v=1.2"></script>
+
+    <script type="module" src="./js/app.js?v=1.4"></script>
 </body>
 
 </html>

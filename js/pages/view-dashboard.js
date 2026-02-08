@@ -6,10 +6,13 @@ export const ViewDashboard = {
         <!-- Block 1: Main Card (User Info + Nav) -->
         <div class="bg-white p-6 rounded-[2rem] muji-shadow border border-gray-50 space-y-6">
             <!-- User Name Header -->
-            <div class="text-center">
+            <div class="text-center space-y-1">
                 <h1 class="text-xl font-light text-gray-700 tracking-widest">
-                    {{ config.user_name || '使用者' }} 的生活筆記
+                    {{ config.user_name || '使用者' }}
                 </h1>
+                <p v-if="dateRangeText" class="text-[10px] text-gray-400 tracking-wider font-english">
+                    {{ dateRangeText }}
+                </p>
             </div>
 
             <!-- Nav Buttons (Moved Inside) -->
@@ -85,6 +88,32 @@ export const ViewDashboard = {
         },
         shouldShowCollection() {
             return this.shouldShowFxRate || (this.friends && this.friends.length > 0) || (this.projects && this.projects.length > 0);
+        },
+        dateRangeText() {
+            const scope = this.config.scope;
+            const formatDate = (d) => d ? d.replace(/-/g, '/') : '';
+
+            if (scope === 'range' && this.config.scopeValue) {
+                return `${formatDate(this.config.scopeValue.start)} ~ ${formatDate(this.config.scopeValue.end)}`;
+            }
+
+            if (scope === 'project' && this.config.scopeValue) {
+                const proj = this.projects.find(p => p.id === this.config.scopeValue);
+                if (proj) {
+                    return `${formatDate(proj.startDate)} ~ ${formatDate(proj.endDate)}`;
+                }
+                return '';
+            }
+
+            if (scope === 'all') {
+                if (!this.transactions || this.transactions.length === 0) return '';
+                // Find min and max spendDate
+                // spendDate is YYYY-MM-DD or YYYY-MM-DDTHH:mm...
+                const dates = this.transactions.map(t => t.spendDate.split('T')[0]).sort();
+                return `${formatDate(dates[0])} ~ ${formatDate(dates[dates.length - 1])}`;
+            }
+
+            return '';
         }
     },
     methods: {

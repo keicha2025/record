@@ -1,6 +1,6 @@
 import {
     db, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider,
-    collection, doc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, query, orderBy, where, getDoc, writeBatch,
+    collection, doc, setDoc, addDoc, getDocs, updateDoc, deleteDoc, query, orderBy, where, getDoc, writeBatch, arrayUnion, arrayRemove, collectionGroup,
     reauthenticateWithPopup
 } from './firebase-config.js';
 
@@ -290,65 +290,181 @@ export const API = {
     },
 
     // Sharing Features
-    async updateSharedLink(enable) {
+    // --- Shared Links System ---
+
+    async getSharedLinks() {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Not logged in");
+        const snapshot = await getDocs(collection(db, 'users', user.uid, 'shared_links'));
+        return snapshot.docs.map(doc => doc.data());
+    },
+
+    async createSharedLink(config) {
         const user = auth.currentUser;
         if (!user) throw new Error("Not logged in");
 
+        // Generate Link ID
+        const linkId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const linkData = {
+            id: linkId,
+            createdAt: new Date().toISOString(),
+            ...config
+        };
+
+        const batch = writeBatch(db);
+
+        // 1. Create Link Doc
+        const linkRef = doc(db, 'users', user.uid, 'shared_links', linkId);
+        batch.set(linkRef, linkData);
+
+        // 2. Update User's activeSharedIds
         const userRef = doc(db, 'users', user.uid);
+        batch.update(userRef, {
+            activeSharedIds: arrayUnion(linkId)
+        });
 
-        if (enable) {
-            // Generate a simple random ID
-            const sharedId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-            // Use setDoc with merge to ensure document exists if it was deleted or never created
-            await setDoc(userRef, { sharedId: sharedId }, { merge: true });
-            return sharedId;
-        } else {
-            // Remove sharedId
-            await updateDoc(userRef, { sharedId: null });
-            return null;
-        }
+        await batch.commit();
+        return linkId;
     },
 
-    async fetchSharedData(sharedId) {
-        try {
-            // 1. Find user by sharedId
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where('sharedId', '==', sharedId));
-            const querySnapshot = await getDocs(q);
+    async deleteSharedLink(linkId) {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Not logged in");
 
-            if (querySnapshot.empty) {
-                throw new Error("Shared link is invalid or expired.");
+        const batch = writeBatch(db);
+
+        // 1. Delete Link Doc
+        const linkRef = doc(db, 'users', user.uid, 'shared_links', linkId);
+        batch.delete(linkRef);
+
+        // 2. Remove from activeSharedIds
+        const userRef = doc(db, 'users', user.uid);
+        batch.update(userRef, {
+            activeSharedIds: arrayRemove(linkId)
+        });
+
+        await batch.commit();
+    },
+
+    async updateSharedLink(linkId, config) {
+        const user = auth.currentUser;
+        if (!user) throw new Error("Not logged in");
+        const linkRef = doc(db, 'users', user.uid, 'shared_links', linkId);
+        await updateDoc(linkRef, config);
+    },
+
+    // Updated Fetch for Viewer Mode
+    async fetchSharedData(linkId, targetUid = null) {
+        try {
+            let uid = targetUid;
+            let linkConfig = null;
+
+            if (uid) {
+                // FAST PATH: Direct Access via UID (No Collection Group Index needed)
+                const linkSnap = await getDoc(doc(db, 'users', uid, 'shared_links', linkId));
+                if (!linkSnap.exists()) throw new Error("Link configuration not found.");
+                linkConfig = linkSnap.data();
+            } else {
+                // SLOW PATH: Legacy links without UID (Requires Index)
+                const linkQuery = query(collectionGroup(db, 'shared_links'), where('id', '==', linkId));
+                const linkQuerySnapshot = await getDocs(linkQuery);
+
+                if (linkQuerySnapshot.empty) {
+                    throw new Error("Shared link is invalid or expired.");
+                }
+
+                const linkSnap = linkQuerySnapshot.docs[0];
+                linkConfig = linkSnap.data();
+                uid = linkSnap.ref.parent.parent.id;
             }
 
-            // Should be only one
-            const userDoc = querySnapshot.docs[0];
-            const uid = userDoc.id;
-            const userData = userDoc.data();
+            const userDocRef = doc(db, 'users', uid);
+            const userDoc = await getDoc(userDocRef);
 
-            // 2. Fetch Transactions for that user
-            const txSnapshot = await getDocs(query(collection(db, 'users', uid, 'transactions'), orderBy('spendDate', 'desc')));
-            const transactions = txSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            if (!userDoc.exists()) throw new Error("Owner user not found.");
 
-            // 3. Return Data (Filtered if needed)
-            // We return same structure as fetchInitialData
-            return {
-                categories: userData.categories || DEFAULTS.categories,
-                paymentMethods: userData.paymentMethods || DEFAULTS.paymentMethods,
-                friends: userData.friends || [],
-                projects: userData.projects || [],
-                config: userData.config || {}, // Contains user_name etc.
-                transactions: transactions,
-                stats: {} // Frontend calculates stats
-            };
+            return this._fetchDataForUser(userDoc, linkConfig);
 
         } catch (error) {
             console.error("Fetch Shared Data Error", error);
             throw error;
         }
+    },
+
+    async _fetchDataForUser(userDoc, linkConfig) {
+        const uid = userDoc.id;
+        const userData = userDoc.data();
+
+        // 3. Fetch Transactions
+        let qTx = query(collection(db, 'users', uid, 'transactions'), orderBy('spendDate', 'desc'));
+        const txSnapshot = await getDocs(qTx);
+        let transactions = txSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // 4. Apply Link Filters
+        // Date Range
+        if (linkConfig.scope === 'range' && linkConfig.scopeValue) {
+            const { start, end } = linkConfig.scopeValue;
+            if (start) transactions = transactions.filter(t => t.spendDate >= start);
+            if (end) transactions = transactions.filter(t => t.spendDate <= end);
+        }
+        // Project Scope
+        if (linkConfig.scope === 'project' && linkConfig.scopeValue) {
+            transactions = transactions.filter(t => t.projectId === linkConfig.scopeValue);
+        }
+        // Exclude Project Expenses (if not project scope)
+        if (linkConfig.scope !== 'project' && linkConfig.excludeProjectExpenses) {
+            transactions = transactions.filter(t => !t.projectId);
+            userData.projects = []; // Don't load projects if expenses are excluded
+        }
+
+        // Privacy: Mask Friends
+        if (linkConfig.hideFriendNames) {
+            // Mask in transactions
+            transactions.forEach(t => {
+                if (t.payer && t.payer !== 'Me' && t.payer !== '我') t.payer = "友";
+                if (t.friendName) t.friendName = "友";
+                if (t.beneficiaries) {
+                    t.beneficiaries = t.beneficiaries.map(b => (b === 'Me' || b === '我') ? b : "友");
+                }
+            });
+            // Don't return real friend list
+            userData.friends = [];
+        }
+
+        // Privacy: Mask Projects
+        if (linkConfig.hideProjectNames) {
+            // transactions.forEach(t => { if(t.projectId) t.projectName = "專案"; }); // We don't have projectName in tx usually, just ID.
+            // But we filter the projects list passed to config.
+            // Actually, we fetch projects?
+            // "Viewer Mode" expects 'projects' list.
+            if (linkConfig.scope === 'project') {
+                // Return only that project, maybe masked? No, if dedicated link, name should probably show?
+                // User requirement: "隱藏專案名稱，僅顯示代號"
+                userData.projects = userData.projects?.filter(p => p.id === linkConfig.scopeValue).map((p, i) => ({ ...p, name: "專案 " + (i + 1) }));
+            } else {
+                userData.projects = userData.projects?.map((p, i) => ({ ...p, name: "專案 " + (i + 1) }));
+            }
+        } else {
+            // Normal Project Filtering
+            if (linkConfig.scope === 'project') {
+                userData.projects = userData.projects?.filter(p => p.id === linkConfig.scopeValue);
+            }
+        }
+
+        // Override User Name with Link Name
+        if (linkConfig.name) {
+            userData.user_name = linkConfig.name;
+        }
+
+        return {
+            config: userData, // Includes fx_rate
+            transactions,
+            friends: userData.friends || [], // Might be empty if masked
+            projects: userData.projects || [],
+            paymentMethods: userData.paymentMethods || [],
+            categories: userData.categories || [],
+            linkConfig: linkConfig // Pass full config for UI usage
+        };
     },
 
     async clearAccountData() {
@@ -418,8 +534,6 @@ export const API = {
             console.error("Import Data Error", error);
             throw error;
         }
-
-
     },
 
     async deleteFullAccount() {

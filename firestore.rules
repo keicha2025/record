@@ -8,19 +8,32 @@ service cloud.firestore {
       // Owner has full access
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // Allow finding user by sharedId (Viewer Mode)
-      // This allows querying users where sharedId is not null
-      allow list: if resource.data.sharedId != null;
-      allow get: if resource.data.sharedId != null;
+      // Allow finding user by activeSharedIds (Viewer Mode)
+      // Use 'in' check to prevent errors on docs missing the field
+      allow list: if 'activeSharedIds' in resource.data && resource.data.activeSharedIds.size() > 0;
+      allow get: if 'activeSharedIds' in resource.data && resource.data.activeSharedIds.size() > 0;
+
+      // Shared Links Config
+      match /shared_links/{linkId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+        // Public can read link config if they know the ID
+        allow get: if true; 
+      }
 
       // Transactions Subcollection
       match /transactions/{txId} {
         // Owner has full access
         allow read, write: if request.auth != null && request.auth.uid == userId;
         
-        // Viewer Mode: Allow read if the parent user has a sharedId set
-        allow read: if get(/databases/$(database)/documents/users/$(userId)).data.sharedId != null;
+        // Viewer Mode: Allow read if the parent user has ANY active shared links
+        // Use .get() with default to safely handle missing fields
+        allow read: if get(/databases/$(database)/documents/users/$(userId)).data.get('activeSharedIds', []).size() > 0;
       }
+    }
+
+    // Collection Group for Shared Links (Optional, if we switch query strategy)
+    match /{path=**}/shared_links/{linkId} {
+      allow read: if true;
     }
   }
 }

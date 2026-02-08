@@ -291,25 +291,18 @@ export const SettingsPage = {
                           </div>
                       </div>
  
-                      <!-- SHARED LINK TOGGLE -->
-                      <div class="bg-gray-50 p-4 rounded-xl space-y-3">
-                     <div class="flex items-center justify-between">
-                         <span class="text-xs text-gray-600 font-medium">公開分享連結 (唯讀)</span>
-                         <label class="relative inline-flex items-center cursor-pointer">
-                             <input type="checkbox" v-model="isSharedLinkEnabled" @change="toggleShare" class="sr-only peer">
-                             <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4A4A4A]"></div>
-                         </label>
-                     </div>
-                    <div v-if="sharedLink" class="space-y-2 animate-in fade-in">
-                        <p class="text-[9px] text-gray-400">將此連結分享給朋友，他們能檢視但無法編輯。</p>
-                        <div class="flex items-center space-x-2 bg-white px-2 py-2 rounded-lg border border-gray-100">
-                             <input type="text" readonly :value="sharedLink" class="w-full text-[10px] text-gray-500 outline-none">
-                             <button @click="copyLink" class="text-gray-400 hover:text-gray-600">
-                                 <span class="material-symbols-rounded text-sm">{{ copied ? 'check' : 'content_copy' }}</span>
-                             </button>
-                        </div>
-                     </div>
-                 </div>
+                      <!-- SHARED LINK MANAGEMENT -->
+                      <div class="bg-gray-50 p-4 rounded-xl relative">
+                          <div class="flex items-center justify-between">
+                              <div class="space-y-0.5">
+                                  <span class="text-xs text-gray-600 font-medium block">公開分享連結管理</span>
+                                  <p class="text-[9px] text-gray-400">建立多個分享連結，並可設定不同的分享範圍與權限。</p>
+                              </div>
+                              <button @click="$emit('manage-shared-links')" class="w-8 h-8 flex items-center justify-center bg-white rounded-full shadow-sm border border-gray-100 active:scale-95 transition-all text-gray-500 hover:text-gray-700 mt-1">
+                                  <span class="material-symbols-rounded text-sm">edit</span>
+                              </button>
+                          </div>
+                      </div>
 
                  <button @click="$emit('view-import')" class="w-full border border-gray-200 text-gray-500 py-3 rounded-xl text-xs font-medium active:bg-gray-50">
                      匯入資料
@@ -350,7 +343,7 @@ export const SettingsPage = {
     </section>
     `,
     props: ['config', 'friends', 'projects', 'transactions', 'appMode', 'currentUser', 'categories', 'paymentMethods'],
-    emits: ['update-config', 'update-user-data', 'view-project', 'view-friend', 'login', 'logout', 'clear-guest-data', 'create-project', 'open-icon-edit', 'clear-account-data', 'view-import', 'delete-account'],
+    emits: ['update-config', 'update-user-data', 'view-project', 'view-friend', 'login', 'logout', 'clear-guest-data', 'create-project', 'open-icon-edit', 'clear-account-data', 'view-import', 'delete-account', 'manage-shared-links'],
     data() {
         return {
             localConfig: { user_name: '', fx_rate: 0.22 },

@@ -177,3 +177,33 @@
   - Implemented `hasMultipleCurrencies` to intelligently toggle the currency switcher only when needed.
   - Fixed duplicate import syntax error in `view-dashboard.js`.
 
+
+---
+
+# Changelog - 2026-02-08 Update (Shared Links Polish & Privacy)
+
+## 🚀 Shared Links Enhancements (分享連結優化)
+- **Viewer Experience (檢視模式)**:
+  - **Date Range Display**: Added a dedicated date range display below the title.
+    - **All Records**: Shows the range from the first to the last transaction.
+    - **Custom Range**: Shows the configured start and end dates.
+    - **Project**: Shows the project's start and end dates.
+  - **Clean Title**: Removed the hardcoded "的生活筆記" suffix from the viewer title for a cleaner look.
+  - **Smart Loading**: If "Exclude Project Expenses" is enabled, project data is completely excluded from the viewer payload for better privacy and performance.
+
+- **Editor UI (編輯介面)**:
+  - **Default Name Logic**: Restored "的生活筆記" as a default suffix when creating a new link, but allowing full user customization.
+  - **Simplified Actions**: Replaced the top-left "Back" arrow with a clear "Cancel" (取消) text button at the top-right.
+  - **Dynamic Options**: The "Hide Project Names" option now automatically hides if "Exclude Project Expenses" is selected (since project data is already excluded).
+
+## 🔒 Privacy & Security (隱私與安全)
+- **Friend Masking Fix**:
+  - Resolved an issue where the user "Me" (我) was incorrectly masked as "Friend" (友) when "Hide Friend Names" was enabled.
+  - Added masking for the `friendName` field (used in "Help Friend Pay" transactions) to ensuring full privacy.
+- **Permission Hardening**:
+  - Validated Firestore security rules for `shared_links` collection access.
+  - Implemented UID-based direct access path to bypass complex index requirements and improve loading speed.
+
+## 🐛 Bug Fixes (錯誤修正)
+- **Syntax Error**: Fixed a critical `SyntaxError` in `app.js` caused by an invalid import statement.
+- **Code Refinement**: Cleaned up duplicated logic in `app.js` to prevent race conditions during data loading.

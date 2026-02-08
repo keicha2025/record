@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js?v=1.3';
-import { API, DEFAULTS } from './api.js';
+import { API, DEFAULTS } from './api.js?v=1.4';
 import { GoogleSheetsService } from './services/google-sheets-service.js';
 import { AddPage } from './pages/add-page.js';
 import { EditPage } from './pages/edit-page.js';
@@ -9,6 +9,8 @@ import { SettingsPage } from './pages/settings-page.js';
 import { OverviewPage } from "./pages/overview-page.js";
 import { ProjectDetailPage } from './pages/project-detail-page.js';
 import { ImportPage } from './pages/import-page.js';
+import { SharedLinksPage } from './pages/shared-links-page.js?v=1.4';
+import { EditSharedLinksPage } from './pages/edit-shared-links-page.js?v=1.4';
 
 import { ViewDashboard } from './pages/view-dashboard.js';
 import { SystemModal } from './components/system-modal.js';
@@ -36,7 +38,10 @@ createApp({
         'app-footer': AppFooter,
         'icon-picker': IconPicker,
         'icon-edit-page': IconEditPage,
-        'app-select': AppSelect
+        'icon-edit-page': IconEditPage,
+        'app-select': AppSelect,
+        'shared-links-page': SharedLinksPage,
+        'edit-shared-links-page': EditSharedLinksPage
     },
     setup() {
         const getLocalISOString = () => {
@@ -72,6 +77,7 @@ createApp({
         const editForm = ref(null);
         const selectedProject = ref(null);
         const iconEditContext = ref(null);
+        const editingLink = ref(null);
         const isSettingsDirty = ref(false);
 
         // --- Global Dialog System ---
@@ -314,10 +320,19 @@ createApp({
                 // ADMIN / VIEWER (Firestore)
                 let data; // Declare variable
                 if (appMode.value === 'VIEWER') {
+
                     const params = new URLSearchParams(window.location.search);
                     const sharedId = params.get('id');
+                    const uid = params.get('uid');
+
+                    console.log("[Viewer Mode] Init", { sharedId, uid, params: window.location.search });
+
+                    // We need at least one way to find data.
+                    // If UID is present, we use new fast path.
+                    // If not, we try old path (which might fail without index, but we keep it as fallback in API)
                     if (!sharedId) throw new Error("Missing Shared ID");
-                    data = await API.fetchSharedData(sharedId);
+
+                    data = await API.fetchSharedData(sharedId, uid);
                 } else {
                     data = await API.fetchInitialData();
                 }
@@ -334,6 +349,10 @@ createApp({
                 if (data.config) {
                     systemConfig.value = { ...data.config }; // Remote config overrides local for logged-in user
                     if (data.config.fx_rate) fxRate.value = parseFloat(data.config.fx_rate);
+                }
+                // Merge Link Config (Viewer Mode specific settings like scope, scopeValue)
+                if (data.linkConfig) {
+                    systemConfig.value = { ...systemConfig.value, ...data.linkConfig };
                 }
 
                 if (appMode.value === 'VIEWER') currentTab.value = 'overview';
