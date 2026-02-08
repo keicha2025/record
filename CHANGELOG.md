@@ -207,3 +207,24 @@
 ## 🐛 Bug Fixes (錯誤修正)
 - **Syntax Error**: Fixed a critical `SyntaxError` in `app.js` caused by an invalid import statement.
 - **Code Refinement**: Cleaned up duplicated logic in `app.js` to prevent race conditions during data loading.
+
+---
+
+# Changelog - 2026-02-08 Update (Add Page UX & Stability)
+
+## ⚡️ Add Page Enhancements (新增頁面體驗優化)
+- **Fluid Project Creation (流暢的計畫建立流程)**:
+    - **Silent Creation**: Removed the interruption of "Project Created" alert dialogs.
+    - **Auto-Selection**: Newly created projects are now automatically selected in the form, allowing you to continue tracking immediately.
+    - **Conflict Resolution**: Fixed an issue where the date-based auto-selection would overwrite the newly created project.
+
+- **Tactile "Confirm & Save" Button (按鈕回饋優化)**:
+    - **Animation**: Added a subtle scale/spring animation on press.
+    - **Haptic Feedback**: Added vibration feedback for mobile users.
+    - **Double-Submit Prevention**: The button now instantly disables upon click to prevent accidental duplicate entries.
+
+## 🐛 Bug Fixes (錯誤修復)
+- **App Stability**: Fixed syntax errors in `app.js` (duplicate declarations, object closure) that caused startup crashes.
+- **Form Logic**: Fixed `add-page.js` syntax errors and optimized the project watcher logic.
+
+---

@@ -147,7 +147,10 @@ export const AddPage = {
                 </div>
             </div>
 
-            <button @click.stop="prepareAndSubmit" :disabled="loading" class="w-full bg-[#4A4A4A] text-white py-5 rounded-2xl text-[10px] font-medium tracking-[0.4em] uppercase shadow-lg disabled:bg-gray-200">
+            <button @click.stop="prepareAndSubmit" :disabled="loading || isSubmitting" 
+                    class="w-full bg-[#4A4A4A] text-white py-5 rounded-2xl text-[10px] font-medium tracking-[0.4em] uppercase shadow-lg 
+                           transition-all duration-200 ease-in-out active:scale-95 
+                           disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100">
                 Confirm & Save
             </button>
         </div>
@@ -158,7 +161,7 @@ export const AddPage = {
     data() {
         return {
             isAddingFriend: false, addFriendTarget: '', newFriendName: '', selectedFriends: [], splitMode: 'auto',
-            isProjectModeOpen: false, isAddingNewProject: false, newProjectName: ''
+            isProjectModeOpen: false, isAddingNewProject: false, newProjectName: '', isSubmitting: false
         };
     },
     computed: {
@@ -183,7 +186,7 @@ export const AddPage = {
         },
         'projects': {
             handler() {
-                if (this.form.spendDate) this.autoSelectProject(this.form.spendDate);
+                if (this.form.spendDate && !this.form.projectId) this.autoSelectProject(this.form.spendDate);
             },
             deep: true
         }
@@ -270,12 +273,17 @@ export const AddPage = {
             else this.selectedFriends.push(name);
         },
         prepareAndSubmit() {
+            if (this.isSubmitting) return;
+
             // [新增] 資料檢查邏輯
             if (!this.form.amount || this.form.amount <= 0) { this.dialog.alert('請輸入有效的金額'); return; }
             if (!this.form.name) { this.dialog.alert('請輸入項目名稱'); return; }
             if (!this.form.paymentMethod) { this.dialog.alert('請選擇支付方式'); return; }
             if (this.form.type !== '收款' && !this.form.categoryId) { this.dialog.alert('請選擇分類'); return; }
             if (this.form.isSplit && this.selectedFriends.length === 0) { this.dialog.alert('已開啟分帳模式，請至少選擇一位朋友'); return; }
+
+            // Haptic Feedback
+            if (navigator.vibrate) navigator.vibrate(10);
 
             const share = this.splitMode === 'auto' ? this.autoShareValue : this.form.personalShare;
             let debt = 0;
@@ -293,7 +301,13 @@ export const AddPage = {
             }
             this.form.personalShare = (this.form.type === '支出') ? share : this.form.personalShare;
             this.form.debtAmount = debt;
+
+            this.isSubmitting = true;
             this.$emit('submit');
+
+            // Re-enable after short delay in case parent doesn't unmount (Optimistic UI fallback)
+            setTimeout(() => { this.isSubmitting = false; }, 2000);
         }
     }
 };
+
