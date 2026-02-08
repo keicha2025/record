@@ -306,6 +306,13 @@ createApp({
                     fxRate.value = systemConfig.value.fx_rate || 0.22;
 
                     transactions.value = localTransactions;
+                    // [Smart Currency Detection]
+                    if (transactions.value.length > 0) {
+                        const latest = transactions.value[0];
+                        const detected = latest.originalCurrency || latest.currency || 'JPY';
+                        if (detected === 'TWD' || detected === 'JPY') baseCurrency.value = detected;
+                    }
+
                     // Recalc Stats
                     let total = 0;
                     transactions.value.forEach(t => {
@@ -346,6 +353,16 @@ createApp({
                 paymentMethods.value = data.paymentMethods || [];
                 projects.value = data.projects || [];
                 transactions.value = data.transactions || [];
+
+                // [Smart Currency Detection] Detect base from latest transaction
+                if (transactions.value.length > 0) {
+                    const latest = transactions.value[0];
+                    const detected = latest.originalCurrency || latest.currency || 'JPY';
+                    if (detected === 'TWD' || detected === 'JPY') {
+                        baseCurrency.value = detected;
+                        console.log("[Smart Currency] Auto-detected from latest transaction:", detected);
+                    }
+                }
 
                 if (data.stats) stats.value = data.stats;
 

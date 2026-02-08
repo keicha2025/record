@@ -64,13 +64,15 @@
 
         <!-- Header -->
         <app-header :app-mode="appMode" :sync-status="'idle'" :current-tab="currentTab" :history-filter="historyFilter"
+            :show-currency-switcher="true"
             @clear-filter="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }">
         </app-header>
 
         <main class="w-full px-4 pt-4 pb-32">
             <!-- Viewer Dashboard -->
             <view-dashboard v-if="currentTab === 'overview'" :transactions="transactions" :stats="stats"
-                :categories="categories" :fx-rate="fxRate" @switch-tab="currentTab = $event"></view-dashboard>
+                :friends="friends" :projects="projects" :config="config" :fx-rate="fxRate"
+                :has-multiple-currencies="hasMultipleCurrencies" @switch-tab="currentTab = $event"></view-dashboard>
 
             <!-- History Page (Reused) -->
             <history-page v-if="currentTab === 'history'" :transactions="filteredTransactions" :categories="categories"

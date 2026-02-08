@@ -64,7 +64,7 @@
         </div>
 
         <app-header :app-mode="appMode" :sync-status="syncStatus" :current-tab="currentTab"
-            :history-filter="historyFilter" :show-currency-switcher="hasMultipleCurrencies" @retry-sync="retrySync"
+            :history-filter="historyFilter" :show-currency-switcher="true" @retry-sync="retrySync"
             @clear-filter="historyFilter = { mode: 'all', categoryId: null, friendName: null, currency: null }">
         </app-header>
 

@@ -42,6 +42,20 @@ createApp({
         const fxRate = ref(0.22);
         const stats = ref({ monthlyLifeTotal: 0, allOneTimeTotal: 0, debtTotal: 0, totalInvestment: 0 });
 
+        // Currency Management
+        const params = new URLSearchParams(window.location.search);
+        const urlCurrency = params.get('currency');
+        const baseCurrency = ref(urlCurrency === 'TWD' ? 'TWD' : 'JPY');
+        const toggleBaseCurrency = () => { baseCurrency.value = baseCurrency.value === 'JPY' ? 'TWD' : 'JPY'; };
+        provide('baseCurrency', baseCurrency);
+        provide('toggleBaseCurrency', toggleBaseCurrency);
+
+        const hasMultipleCurrencies = computed(() => {
+            if (!transactions.value || transactions.value.length === 0) return false;
+            const currencies = new Set(transactions.value.map(t => t.originalCurrency || (t.amountTWD ? 'TWD' : 'JPY')));
+            return currencies.has('JPY') && currencies.has('TWD');
+        });
+
         // Filter & Form State
         const historyFilter = ref({ mode: 'all', categoryId: null, friendName: null, currency: null, keyword: '' });
         const editForm = ref(null);
@@ -86,6 +100,16 @@ createApp({
                 paymentMethods.value = data.paymentMethods || [];
                 projects.value = data.projects || [];
                 transactions.value = data.transactions || [];
+
+                // [Smart Currency Detection] Detect base from latest transaction
+                if (transactions.value.length > 0) {
+                    const latest = transactions.value[0];
+                    const detected = latest.originalCurrency || latest.currency || 'JPY';
+                    if (detected === 'TWD' || detected === 'JPY') {
+                        baseCurrency.value = detected;
+                        console.log("[Smart Currency] Auto-detected from latest transaction:", detected);
+                    }
+                }
 
                 if (data.stats) stats.value = data.stats;
 
@@ -190,6 +214,7 @@ createApp({
             categories, friends, paymentMethods, projects, transactions,
             filteredTransactions, historyFilter, editForm, stats, fxRate, selectedProject,
             modalState, handleModalConfirm, handleModalCancel,
+            baseCurrency, toggleBaseCurrency, hasMultipleCurrencies,
 
             formatNumber: (n) => new Intl.NumberFormat().format(Math.round(n || 0)),
 

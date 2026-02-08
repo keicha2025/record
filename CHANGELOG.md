@@ -253,9 +253,14 @@
     - **Auto-Scroll to Top**: Implemented immediate scroll-to-top when clicking "Confirm & Save" on the Add Page. This ensures users instantly see the entry result or error messages regardless of the form length.
     - 新增頁面體驗優化：實作「儲存並確認」按鈕按下後自動滑動至最上方，確保使用者能立即看清新增結果或錯誤提示。
 
+- **Improved Currency Switcher**:
+    - **Forced Visibility**: The currency switcher in the header is now always visible on Overview and Stats pages, facilitating easier analysis regardless of current data diversity.
+    - **Smart Detection**: Implemented automatic base currency detection. Upon loading, the app identifies the currency of the most recent transaction and automatically sets the base currency (JPY/TWD) to match.
+    - **Full Viewer Support**: Extended currency toggling and smart detection to Viewer mode (shared links), ensuring a consistent experience for all users.
+    - 貨幣切換器優化：Header 顯示邏輯調整為總覽與統計頁面永遠顯示。新增「智慧判斷」功能，系統載入時會自動依據最新一筆交易之幣別（日幣或台幣）切換顯示基準，且同步支援分享連結之唯讀模式。
+
 ### Technical Details
 - Updated `js/api.js` with `_deleteCollectionChunked` helper and refined `deleteFullAccount`.
-- Updated `js/app.js` with `await` on all `dialog.alert` calls, refined `finally` block logic, and added `window.scrollTo` to `handleSubmit`.
-- 修正 `js/api.js` 與 `js/app.js` 的非同步操作流程與批次刪除限制，並優化 `handleSubmit` 的捲動回饋。
-
-
+- Updated `js/app.js` with `await` on all `dialog.alert` calls, refined `finally` block logic, added `window.scrollTo` to `handleSubmit`, and implemented smart currency detection in `loadData`.
+- Updated `js/view-app.js` and `view.html` to support the header switcher and base currency management in Viewer mode.
+- 修正 `js/api.js` 與 `js/app.js` 的非同步操作流程與批次刪除限制，優化 `handleSubmit` 的捲動回饋，並全面整合貨幣智慧切換邏輯。
