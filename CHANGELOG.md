@@ -263,8 +263,8 @@
     - **New Infrastructure**: Established a complete Markdown rendering pipeline for future documentation (Guides, Privacy Policies).
     - **Muji-Style Integration**: Created `css/markdown-body.css` using existing design tokens to ensure all documentation perfectly matches the app's aesthetic.
     - **Advanced Syntax Support**: Added support for GFM, code syntax highlighting (highlight.js), custom alert containers (`::: tip`, etc.), and interactive elements like `details/summary` and `kbd`.
-    - **Demo Page**: Created `page-demo.html` to showcase the rendering capabilities using `markdown-demo.md`.
-    - Markdown 渲染系統：建立完整的預覽機制，整合 `marked.js` 與 `highlight.js` 並搭配自訂 CSS 樣式表，確保未來的操作說明文件能完美呈現「無印風格」，並支援程式碼高亮與特殊提示框。
+    - **Demo Page Refinement**: Created and refined `page-demo.html`. Integrated the standard `AppHeader`, implemented a "Close" button (history back), and adjusted the "Tip" container color to a subtle light gray for better visual harmony.
+    - Markdown 渲染系統優化：建立完整預覽機制並優化 `page-demo.html` 介面，納入標準 Header 元件與「關閉」導航功能，並將「提示」方塊調整為淺灰色調以符合簡約美學。
 
 ### Technical Details
 - Updated `js/api.js` with `_deleteCollectionChunked` helper and refined `deleteFullAccount`.

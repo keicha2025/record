@@ -20,12 +20,34 @@
     line-height: 1.4;
 }
 
-.markdown-body h1 { font-size: 1.75rem; border-bottom: 1px solid var(--color-border-medium); padding-bottom: 0.5rem; }
-.markdown-body h2 { font-size: 1.5rem; border-bottom: 1px solid var(--color-border-medium); padding-bottom: 0.4rem; }
-.markdown-body h3 { font-size: 1.25rem; }
-.markdown-body h4 { font-size: 1.1rem; }
-.markdown-body h5 { font-size: 1rem; }
-.markdown-body h6 { font-size: 0.9rem; color: var(--color-text-secondary); }
+.markdown-body h1 {
+    font-size: 1.75rem;
+    border-bottom: 1px solid var(--color-border-medium);
+    padding-bottom: 0.5rem;
+}
+
+.markdown-body h2 {
+    font-size: 1.5rem;
+    border-bottom: 1px solid var(--color-border-medium);
+    padding-bottom: 0.4rem;
+}
+
+.markdown-body h3 {
+    font-size: 1.25rem;
+}
+
+.markdown-body h4 {
+    font-size: 1.1rem;
+}
+
+.markdown-body h5 {
+    font-size: 1rem;
+}
+
+.markdown-body h6 {
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
 
 /* Paragraphs & Spacing */
 .markdown-body p,
@@ -55,10 +77,15 @@
     padding-left: 1.5rem;
 }
 
-.markdown-body ul { list-style-type: disc; }
-.markdown-body ol { list-style-type: decimal; }
+.markdown-body ul {
+    list-style-type: disc;
+}
 
-.markdown-body li + li {
+.markdown-body ol {
+    list-style-type: decimal;
+}
+
+.markdown-body li+li {
     margin-top: 0.5rem;
 }
 
@@ -143,9 +170,9 @@
 }
 
 .markdown-body .container-block.tip {
-    background-color: #f0fdf4;
-    border-color: #dcfce7;
-    color: #166534;
+    background-color: var(--color-bg-input);
+    border-color: var(--color-border-medium);
+    color: var(--color-text-main);
 }
 
 .markdown-body .container-block.warning {
@@ -198,4 +225,6 @@
     outline: none;
 }
 
-.markdown-body summary:hover { opacity: 0.8; }
+.markdown-body summary:hover {
+    opacity: 0.8;
+}
