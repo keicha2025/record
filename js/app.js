@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js?v=1.3';
-import { API } from './api.js';
+import { API, DEFAULTS } from './api.js';
 import { GoogleSheetsService } from './services/google-sheets-service.js';
 import { AddPage } from './pages/add-page.js';
 import { EditPage } from './pages/edit-page.js';
@@ -261,19 +261,13 @@ createApp({
                     if (savedCats) {
                         categories.value = JSON.parse(savedCats);
                     } else if (categories.value.length === 0) {
-                        categories.value = [
-                            { id: 'cat_001', name: '餐飲', icon: 'restaurant', type: '支出', order: 1 },
-                            { id: 'cat_002', name: '交通', icon: 'train', type: '支出', order: 2 },
-                            { id: 'cat_003', name: '購物', icon: 'shopping_bag', type: '支出', order: 3 },
-                            { id: 'cat_004', name: '娛樂', icon: 'movie', type: '支出', order: 4 },
-                            { id: 'cat_999', name: '其他', icon: 'more_horiz', type: '支出', order: 5 }
-                        ];
+                        categories.value = [...DEFAULTS.categories];
                     }
 
                     if (savedPMs) {
                         paymentMethods.value = JSON.parse(savedPMs);
                     } else if (paymentMethods.value.length === 0) {
-                        paymentMethods.value = [{ id: 'pm_01', name: '現金', order: 1 }, { id: 'pm_02', name: 'PayPay', order: 2 }];
+                        paymentMethods.value = [...DEFAULTS.paymentMethods];
                     }
 
                     transactions.value = localTransactions;

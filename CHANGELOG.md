@@ -125,6 +125,8 @@
   - 介面優化：調整備份說明文字位置至按鈕上方並靠左對齊。
 - **UX Improvement**: Implemented auto-reload after successful data import to ensure users see updated data immediately.
   - 使用者體驗優化：資料匯入成功後自動重新整理頁面，確保使用者即時看到最新資料。
+- **Unification**: Unified default settings (categories, payment methods) for Guest Mode and New Users by centralizing configuration.
+  - 設定統一：統一訪客模式與新使用者的預設設定（類別、支付方式），集中管理配置。
 
 ### Technical Details
 - Added `js/pages/import-page.js` component with file parsing and `API.importData` integration.

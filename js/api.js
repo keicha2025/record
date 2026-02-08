@@ -5,7 +5,7 @@ import {
 
 import { CONFIG } from './config.js?v=1.3';
 
-const DEFAULTS = {
+export const DEFAULTS = {
     categories: [
         { id: 'cat_001', name: '外食', icon: 'restaurant', type: '支出', order: 1 },
         { id: 'cat_002', name: '交通', icon: 'directions_bus', type: '支出', order: 2 },
