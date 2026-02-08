@@ -318,7 +318,7 @@ export const SettingsPage = {
                      登出 Google 帳號
                  </button>
                  <button @click="confirmDeleteData" class="w-full py-2 text-[10px] text-gray-300 tracking-widest uppercase hover:text-gray-500 transition-colors">
-                     刪除帳戶資料
+                     刪除記帳資料
                  </button>
              </div>
 
@@ -601,7 +601,7 @@ export const SettingsPage = {
             return map[status] || status;
         },
         async confirmDeleteData() {
-            if (await this.dialog.confirm("確定要刪除所有帳戶資料嗎？\n此動作將清空雲端與本地的所有紀錄，且無法復原。", { confirmText: '確定刪除', cancelText: '取消' })) {
+            if (await this.dialog.confirm("確定要刪除所有記帳資料嗎？\n此動作將清空雲端與本地的所有紀錄，且無法復原。", { confirmText: '確定刪除', cancelText: '取消' })) {
                 this.$emit('clear-account-data');
             }
         },

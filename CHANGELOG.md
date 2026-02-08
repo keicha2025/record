@@ -133,6 +133,8 @@
   - 修正：解決訪客模式下新增朋友無法儲存的問題。
 - **Feature**: Implemented "Guest Data Merge" on login. Users are prompted to save their guest data to their Google Account upon logging in.
   - 新功能：實作「訪客資料合併」功能。登入時若偵測到訪客資料，系統將詢問是否將其存入 Google 帳戶。
+- **UI Update**: Renamed "Delete Account Data" to "Delete Bookkeeping Data" to better reflect the action's scope.
+  - 介面更新：將「刪除帳戶資料」更名為「刪除記帳資料」，以更準確描述該功能。
 
 ### Technical Details
 - Added `js/pages/import-page.js` component with file parsing and `API.importData` integration.
