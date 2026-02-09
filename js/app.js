@@ -578,7 +578,23 @@ createApp({
 
         const handleTabChange = async (newTab) => {
             if (isSettingsDirty.value) {
-                if (await dialog.confirm("您有未儲存的修改，確定要離開嗎？")) {
+                // Ask if user wants to save changes
+                if (await dialog.confirm("是否儲存當前編輯狀態？", {
+                    confirmText: "儲存",
+                    secondaryText: "不儲存"
+                })) {
+                    // User clicked "儲存" - trigger save via event
+                    // Emit a global event that settings page can listen to
+                    window.dispatchEvent(new CustomEvent('settings-save-requested'));
+
+                    // Wait a bit for save to complete
+                    await new Promise(resolve => setTimeout(resolve, 300));
+
+                    isSettingsDirty.value = false;
+                    currentTab.value = newTab;
+                } else {
+                    // User clicked "不儲存" - discard changes and clear edit state
+                    sessionStorage.removeItem('settings_edit_state');
                     isSettingsDirty.value = false;
                     currentTab.value = newTab;
                 }
@@ -722,6 +738,8 @@ createApp({
         };
 
         const handleUpdateUserData = async (data, silent = false) => {
+            console.log('[DEBUG] handleUpdateUserData called with:', JSON.stringify(data));
+
             if (appMode.value === 'GUEST') {
                 if (data.categories) localStorage.setItem('guest_categories', JSON.stringify(data.categories));
                 if (data.paymentMethods) localStorage.setItem('guest_payments', JSON.stringify(data.paymentMethods));
@@ -732,7 +750,9 @@ createApp({
             if (appMode.value !== 'ADMIN') return;
             if (!silent) loading.value = true;
             try {
+                console.log('[DEBUG] Calling API.updateUserData...');
                 await API.updateUserData(data);
+                console.log('[DEBUG] API.updateUserData completed successfully');
                 await loadData();
             } finally {
                 if (!silent) loading.value = false;
@@ -802,27 +822,67 @@ createApp({
                 }
             },
             handleSelectIcon: ({ icon, name }) => {
+                console.log('[DEBUG handleSelectIcon] Received:', { icon, name, context: iconEditContext.value });
+
                 if (!iconEditContext.value) return;
                 const { type, id } = iconEditContext.value;
 
-                // Update root state
-                if (type === 'category') {
-                    const cat = categories.value.find(c => c.id === id);
-                    if (cat) {
-                        cat.icon = icon;
-                        cat.name = name;
+                // Check if we're in edit mode (from sessionStorage)
+                const editState = sessionStorage.getItem('settings_edit_state');
+                let inEditMode = false;
+
+                if (editState) {
+                    try {
+                        const state = JSON.parse(editState);
+                        inEditMode = state.isCategoryModeEdit || state.isPaymentModeEdit;
+
+                        // Update the sessionStorage state
+                        if (type === 'category' && state.isCategoryModeEdit) {
+                            const cat = state.localCategories.find(c => c.id === id);
+                            if (cat) {
+                                cat.icon = icon;
+                                cat.name = name;
+                                sessionStorage.setItem('settings_edit_state', JSON.stringify(state));
+                                console.log('[DEBUG handleSelectIcon] Updated localCategories in sessionStorage');
+                            }
+                        } else if (type === 'payment' && state.isPaymentModeEdit) {
+                            const pm = state.localPaymentMethods.find(p => p.id === id);
+                            if (pm) {
+                                pm.icon = icon;
+                                pm.name = name;
+                                sessionStorage.setItem('settings_edit_state', JSON.stringify(state));
+                                console.log('[DEBUG handleSelectIcon] Updated localPaymentMethods in sessionStorage');
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse edit state:', e);
                     }
-                } else if (type === 'payment') {
-                    const pm = paymentMethods.value.find(p => p.id === id);
-                    if (pm) {
-                        pm.icon = icon;
-                        pm.name = name;
+                }
+
+                // If NOT in edit mode, update the root state and save to database
+                if (!inEditMode) {
+                    console.log('[DEBUG handleSelectIcon] Not in edit mode, saving directly to database');
+
+                    if (type === 'category') {
+                        const cat = categories.value.find(c => c.id === id);
+                        if (cat) {
+                            cat.icon = icon;
+                            cat.name = name;
+                        }
+                        // Save to database
+                        handleUpdateUserData({ categories: categories.value }, true);
+                    } else if (type === 'payment') {
+                        const pm = paymentMethods.value.find(p => p.id === id);
+                        if (pm) {
+                            pm.icon = icon;
+                            pm.name = name;
+                        }
+                        // Save to database
+                        handleUpdateUserData({ paymentMethods: paymentMethods.value }, true);
                     }
                 }
 
                 currentTab.value = 'settings';
-                // Trigger a refresh of settings-page if it's watching id? 
-                // Actually, settings-page will react if it uses these props.
             },
 
             // NEW: Auth Methods

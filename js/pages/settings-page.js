@@ -480,9 +480,14 @@ export const SettingsPage = {
             if (!this.isCategoryModeEdit) {
                 this.localCategories = JSON.parse(JSON.stringify(this.categories || []));
                 this.isCategoryModeEdit = true;
+                // Save edit state to sessionStorage
+                this.saveEditState();
             }
         },
         saveCategoryEdit() {
+            console.log('[DEBUG] saveCategoryEdit called');
+            console.log('[DEBUG] localCategories:', JSON.stringify(this.localCategories));
+
             // Re-assign order purely based on visual index
             const updated = JSON.parse(JSON.stringify(this.localCategories));
             const expense = updated.filter(c => c.type === '支出').sort((a, b) => (a.order || 99) - (b.order || 99));
@@ -491,8 +496,13 @@ export const SettingsPage = {
             expense.forEach((c, i) => { const item = updated.find(orig => orig.id === c.id); if (item) item.order = i + 1; });
             income.forEach((c, i) => { const item = updated.find(orig => orig.id === c.id); if (item) item.order = i + 100; });
 
+            console.log('[DEBUG] Updated categories to emit:', JSON.stringify(updated));
+
             this.$emit('update-user-data', { categories: updated });
             this.isCategoryModeEdit = false;
+
+            // Clear edit state from sessionStorage after successful save
+            this.clearEditState();
         },
         cancelCategoryEdit() {
             this.isCategoryModeEdit = false;
@@ -558,14 +568,31 @@ export const SettingsPage = {
             if (idx !== -1) list.splice(idx, 1);
         },
         addCategory(type = '支出') {
+            // Auto-enter edit mode if not already in it
+            if (!this.isCategoryModeEdit) {
+                this.toggleCategoryEdit();
+            }
+
             const id = 'cat_' + Date.now();
-            this.localCategories.push({
+            const newCategory = {
                 id: id,
                 name: '新類別',
                 icon: type === '支出' ? 'star' : 'payments',
                 type: type,
                 order: 999
-            });
+            };
+
+            console.log('[DEBUG] Adding new category:', newCategory);
+            console.log('[DEBUG] localCategories before:', JSON.stringify(this.localCategories));
+
+            this.localCategories.push(newCategory);
+
+            console.log('[DEBUG] localCategories after:', JSON.stringify(this.localCategories));
+
+            // Save state before navigation
+            this.saveEditState();
+
+            // Open icon picker for the new category
             this.openIconPicker('category', id);
         },
         addPaymentMethod() {
@@ -576,12 +603,15 @@ export const SettingsPage = {
                 icon: 'payments',
                 order: 999
             });
-            this.openIconPicker('payment', id);
+            // Don't auto-open icon picker to avoid losing edit state during navigation
         },
         openIconPicker(type, id) {
             const list = type === 'category' ? this.localCategories : this.localPaymentMethods;
             const item = list.find(it => it.id === id);
             if (!item) return;
+
+            // Save edit state before navigation
+            this.saveEditState();
 
             this.$emit('open-icon-edit', {
                 type,
@@ -589,6 +619,34 @@ export const SettingsPage = {
                 name: item.name,
                 icon: item.icon || 'payments'
             });
+        },
+        saveEditState() {
+            if (this.isCategoryModeEdit) {
+                sessionStorage.setItem('settings_edit_state', JSON.stringify({
+                    isCategoryModeEdit: this.isCategoryModeEdit,
+                    localCategories: this.localCategories,
+                    isPaymentModeEdit: this.isPaymentModeEdit,
+                    localPaymentMethods: this.localPaymentMethods
+                }));
+            }
+        },
+        restoreEditState() {
+            const saved = sessionStorage.getItem('settings_edit_state');
+            if (saved) {
+                try {
+                    const state = JSON.parse(saved);
+                    this.isCategoryModeEdit = state.isCategoryModeEdit || false;
+                    this.localCategories = state.localCategories || [];
+                    this.isPaymentModeEdit = state.isPaymentModeEdit || false;
+                    this.localPaymentMethods = state.localPaymentMethods || [];
+                    console.log('[DEBUG] Restored edit state from sessionStorage');
+                } catch (e) {
+                    console.error('Failed to restore edit state:', e);
+                }
+            }
+        },
+        clearEditState() {
+            sessionStorage.removeItem('settings_edit_state');
         },
 
         formatNumber(num) { return new Intl.NumberFormat().format(Math.round(num || 0)); },
@@ -662,6 +720,26 @@ export const SettingsPage = {
     },
     inject: ['dialog'],
     mounted() {
+        // Restore edit state if returning from icon edit page
+        this.restoreEditState();
         this.localConfig = { ...this.config };
+
+        // Listen for save requests from unsaved changes dialog
+        this.saveRequestHandler = () => {
+            console.log('[DEBUG] Save requested from dialog');
+            if (this.isCategoryModeEdit) {
+                this.saveCategoryEdit();
+            }
+            if (this.isPaymentModeEdit) {
+                this.savePaymentEdit();
+            }
+        };
+        window.addEventListener('settings-save-requested', this.saveRequestHandler);
+    },
+    beforeUnmount() {
+        // Clean up event listener
+        if (this.saveRequestHandler) {
+            window.removeEventListener('settings-save-requested', this.saveRequestHandler);
+        }
     }
 };

@@ -332,3 +332,52 @@
 - `js/pages/stats-page.js` - Ensured compatibility with restored palette
 
 ---
+## [2026-02-09T15:52:00Z] Category Management State Persistence & Dialog UX Improvement
+
+### Bug Fixes
+- **Category Save Failure**: Fixed a critical bug where newly added custom categories were not being saved to Firestore. The root cause was that navigating to the icon edit page after adding a category caused the edit mode state (`isCategoryModeEdit` and `localCategories`) to be lost, preventing the save action from executing.
+  - 類別儲存失敗修正：修復新增自訂類別後無法儲存至資料庫的問題。根本原因是跳轉至圖示編輯頁面時編輯狀態遺失。
+- **Icon Edit Page Save Button**: Fixed the non-functional save button on the icon edit page. The `handleSelectIcon` function now correctly updates `localCategories` in sessionStorage when in edit mode, and saves directly to the database when not in edit mode.
+  - 圖示編輯頁面儲存按鈕修正：修復儲存按鈕無效的問題，現在會正確更新編輯狀態或直接儲存至資料庫。
+
+### Features
+- **State Persistence**: Implemented sessionStorage-based state persistence for category and payment method editing. The edit state is now automatically saved before navigation and restored when returning from the icon edit page.
+  - 狀態持久化：實作基於 sessionStorage 的編輯狀態持久化，確保頁面跳轉後編輯狀態不會遺失。
+- **Improved Unsaved Changes Dialog**: Enhanced the unsaved changes prompt to be more actionable. Changed from a passive confirmation ("您有未儲存的修改，確定要離開嗎？") to an active save prompt ("是否儲存當前編輯狀態？") with "儲存" and "不儲存" buttons.
+  - 未儲存變更對話框改進：將被動確認改為主動儲存提示，按鈕文字改為「儲存」和「不儲存」，提升使用者體驗。
+
+### Technical Details
+- **State Persistence Implementation**:
+  - Added `saveEditState()`, `restoreEditState()`, and `clearEditState()` methods to `settings-page.js`
+  - Edit state is saved to sessionStorage before navigating to icon edit page
+  - State is automatically restored in the `mounted()` lifecycle hook
+  - State is cleared after successful save via `saveCategoryEdit()` or when user chooses to discard changes
+  - 狀態持久化技術細節：新增三個狀態管理方法，在頁面跳轉前儲存、掛載時恢復、儲存成功後清除。
+
+- **Icon Edit Save Logic**:
+  - Modified `handleSelectIcon()` in `app.js` to check for edit mode state in sessionStorage
+  - In edit mode: updates the sessionStorage state without database write
+  - Not in edit mode: updates root state and calls `handleUpdateUserData()` to save to Firestore
+  - 圖示編輯儲存邏輯：根據編輯模式狀態決定是更新 sessionStorage 或直接寫入資料庫。
+
+- **Dialog Improvement**:
+  - Modified `handleTabChange()` in `app.js` to use custom button text via `dialog.confirm()` options
+  - Implemented event-based communication using `window.dispatchEvent()` and `CustomEvent`
+  - Settings page listens for `settings-save-requested` event and triggers appropriate save method
+  - Added `beforeUnmount()` lifecycle hook to clean up event listeners
+  - 對話框改進技術細節：使用自訂按鈕文字，透過事件系統實現跨組件儲存觸發。
+
+### Files Modified
+- `js/pages/settings-page.js` - Added state persistence methods, event listener for save requests
+- `js/app.js` - Updated `handleSelectIcon()` and `handleTabChange()` with new logic
+- `js/api.js` - Added debug logging to `updateUserData()` method
+
+### Debug Logging
+Added comprehensive debug logging throughout the category save flow for easier troubleshooting:
+- `[DEBUG]` prefix in `settings-page.js` for category operations
+- `[DEBUG API]` prefix in `api.js` for Firestore operations
+- `[DEBUG handleSelectIcon]` prefix in `app.js` for icon selection flow
+- 新增完整的除錯日誌，方便追蹤類別儲存流程。
+
+---
+

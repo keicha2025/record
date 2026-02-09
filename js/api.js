@@ -275,6 +275,8 @@ export const API = {
 
     // Save full user data (for Settings page: categories, payments, etc.)
     async updateUserData(data) {
+        console.log('[DEBUG API] updateUserData called with:', JSON.stringify(data));
+
         const user = auth.currentUser;
         if (!user) throw new Error("Not logged in");
 
@@ -285,7 +287,12 @@ export const API = {
         if (data.paymentMethods) updates.paymentMethods = data.paymentMethods;
         if (data.friends) updates.friends = data.friends;
 
+        console.log('[DEBUG API] Updates to write to Firestore:', JSON.stringify(updates));
+        console.log('[DEBUG API] User UID:', user.uid);
+
         await updateDoc(userRef, updates);
+
+        console.log('[DEBUG API] Firestore updateDoc completed successfully');
         return true;
     },
 
