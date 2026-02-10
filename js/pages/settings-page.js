@@ -262,7 +262,7 @@ export const SettingsPage = {
                       <div class="bg-bg-subtle p-4 rounded-xl space-y-4">
                           <div class="flex items-center space-x-2 px-1">
                              <span class="material-symbols-rounded text-base text-txt-secondary">cloud_sync</span>
-                             <span class="text-xs text-txt-primary font-medium">Google 雲端服務</span>
+                             <span class="text-xs text-txt-primary font-medium">記帳資料管理</span>
                           </div>
                           
                           <p class="text-[10px] text-txt-secondary px-1 pb-2">
